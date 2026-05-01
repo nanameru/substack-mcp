@@ -17,6 +17,48 @@ logger = logging.getLogger(__name__)
 
 VALID_AUDIENCES = {"everyone", "only_paid", "founding", "only_free"}
 
+ALLOWED_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".heic", ".heif"}
+
+# Paths that should never be readable for image upload — defense against
+# accidentally exfiltrating sensitive files (e.g., SSH keys) if a malicious
+# instruction tricks the assistant into calling `upload_image` with a
+# system path.
+_BLOCKED_PATH_PREFIXES = [
+    Path("/etc"),
+    Path("/private/etc"),
+    Path("/private/var"),
+    Path("/System"),
+    Path("/usr"),
+    Path.home() / ".ssh",
+    Path.home() / ".aws",
+    Path.home() / ".gnupg",
+    Path.home() / ".kube",
+    Path.home() / ".docker",
+    Path.home() / "Library" / "Application Support" / "substack-mcp",
+    Path.home() / "Library" / "Keychains",
+    Path.home() / "Library" / "Cookies",
+]
+
+
+def _validate_image_path(image: str) -> None:
+    if image.startswith(("http://", "https://")):
+        return
+    try:
+        resolved = Path(image).expanduser().resolve(strict=True)
+    except (OSError, RuntimeError) as e:
+        raise ValueError(f"Cannot resolve image path: {image!r} ({e})") from e
+    if resolved.suffix.lower() not in ALLOWED_IMAGE_EXTS:
+        raise ValueError(
+            f"Image must have one of these extensions: {sorted(ALLOWED_IMAGE_EXTS)}. "
+            f"Got: {resolved.suffix!r}"
+        )
+    for blocked in _BLOCKED_PATH_PREFIXES:
+        if resolved == blocked or resolved.is_relative_to(blocked):
+            raise ValueError(
+                f"Refusing to upload from sensitive path: {resolved}. "
+                f"Move the image to a normal user directory (e.g., ~/Downloads, ~/Pictures) first."
+            )
+
 
 def _text_to_prosemirror_doc(text: str) -> dict:
     """Convert plain text (with line breaks) into a ProseMirror doc node.
@@ -174,6 +216,7 @@ class SubstackClient:
         return self._summarize_draft(result)
 
     def upload_image(self, image: str) -> dict:
+        _validate_image_path(image)
         result = self._api.get_image(image)
         return {
             "url": result.get("url"),

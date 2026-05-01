@@ -74,6 +74,50 @@ substack-mcp-setup --manual
 Tokens are stored at `~/Library/Application Support/substack-mcp/config.json`
 with `0600` permissions.
 
+## Security
+
+The `substack.sid` cookie is **equivalent to a password** — anyone with it has
+full account access (publish posts, edit billing, etc.). Treat it as such.
+
+### Where the token lives
+
+- macOS: `~/Library/Application Support/substack-mcp/config.json` (mode `0600`)
+- Linux: `~/.config/substack-mcp/config.json` (mode `0600`)
+- Or via env vars: `SUBSTACK_PUBLICATION_URL` + `SUBSTACK_SESSION_TOKEN` (env
+  vars are inherited by child processes — be aware when spawning subprocesses)
+
+The `.gitignore` excludes `config.json`; never commit it. The MCP also writes
+a temporary cookie file via `tempfile.mkstemp` (mode `0600`) and deletes it in
+a `finally` block — see `auth.py:write_cookie_file`.
+
+### If a token leaks
+
+1. **Sign out of all sessions**: Substack → Settings → Security → "Sign out of
+   all sessions". This invalidates every existing `substack.sid` immediately.
+2. Log back in to Substack in your browser.
+3. Re-run `substack-mcp-setup` to capture the new cookie.
+
+### Image upload safety
+
+`upload_image` only accepts:
+- HTTP(S) URLs, or
+- Local files with image extensions (`.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`,
+  `.heic`, `.heif`) that are **not** under sensitive system paths
+  (`/etc`, `/System`, `~/.ssh`, `~/.aws`, `~/Library/Keychains`, etc.)
+
+This guards against an assistant being tricked (via prompt injection in
+fetched content) into uploading e.g. an SSH private key to Substack's CDN.
+
+**Known limitation**: Markdown image syntax `![alt](path)` inside `create_draft`
+is processed by `python-substack` and bypasses this validation. If you pass
+untrusted Markdown, sanitize image paths first.
+
+### Dependencies
+
+Versions are pinned with `~=` (compatible release, no major bumps). Bumping
+`python-substack` in particular should be reviewed — it talks to Substack's
+private API and lives outside Substack's official surface.
+
 ## Notes
 
 - `audience` accepts: `everyone` (default), `only_paid`, `founding`, `only_free`.
