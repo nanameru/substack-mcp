@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+*.egg
+build/
+dist/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# Test / cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+*.secret
+secrets.json
+credentials.json
+
+# Substack MCP local state
+config.json
+cookies.json
+*.cookies
+
+# Build artifacts
+thumbnails/*.png
+!thumbnails/.gitkeep
+
+# OS
+Thumbs.db
