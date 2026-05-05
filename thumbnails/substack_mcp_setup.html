@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Substack MCP 導入ガイド</title>
+  <style>
+    :root {
+      --paper: #FAFAF7;
+      --black: #050505;
+      --blue: #0A2BFF;
+      --cyan: #00E5FF;
+      --white: #FFFFFF;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 1920px;
+      height: 1080px;
+      margin: 0;
+      overflow: hidden;
+      background: var(--paper);
+      font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic UI", system-ui, sans-serif;
+      color: var(--black);
+      letter-spacing: 0;
+    }
+
+    .poster {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      background: var(--paper);
+      border: 10px solid var(--black);
+    }
+
+    /* corner accents */
+    .grid-line-h {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 690px;
+      height: 10px;
+      background: var(--black);
+      z-index: 1;
+    }
+
+    .header {
+      position: absolute;
+      left: 70px;
+      top: 70px;
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      z-index: 3;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 74px;
+      padding: 0 36px;
+      border: 7px solid var(--black);
+      background: var(--white);
+      color: var(--black);
+      font-size: 42px;
+      line-height: 1;
+      font-weight: 900;
+    }
+
+    .tag.cyan {
+      background: var(--cyan);
+    }
+
+    .title-block {
+      position: absolute;
+      left: 70px;
+      top: 200px;
+      width: 1780px;
+      z-index: 3;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 156px;
+      line-height: 1.0;
+      font-weight: 950;
+      letter-spacing: -2px;
+    }
+
+    h1 .brand {
+      display: inline-block;
+      padding: 4px 22px 14px;
+      margin-right: 14px;
+      background: var(--blue);
+      color: var(--white);
+      transform: skewX(-4deg);
+    }
+
+    h1 .brand span {
+      display: inline-block;
+      transform: skewX(4deg);
+    }
+
+    h1 .verb {
+      display: inline-block;
+      margin-left: 8px;
+    }
+
+    .subtitle {
+      margin-top: 64px;
+      width: 1780px;
+      font-size: 56px;
+      line-height: 1.2;
+      font-weight: 900;
+    }
+
+    .subtitle u {
+      text-decoration: none;
+      background: linear-gradient(transparent 60%, var(--cyan) 60%);
+      padding: 0 6px;
+    }
+
+    /* MCP pipeline diagram */
+    .pipeline {
+      position: absolute;
+      left: 70px;
+      right: 70px;
+      bottom: 110px;
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0;
+      z-index: 3;
+    }
+
+    .node {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 10px;
+      border: 8px solid var(--black);
+      background: var(--white);
+      box-shadow: 14px 14px 0 var(--black);
+      padding: 0 48px;
+      height: 200px;
+      min-width: 440px;
+      text-align: center;
+    }
+
+    .node .nodename {
+      font-size: 68px;
+      font-weight: 950;
+      line-height: 1;
+    }
+
+    .node .role {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: #4a4a50;
+    }
+
+    .node.mid {
+      background: var(--blue);
+      color: var(--white);
+      min-width: 340px;
+      padding: 0 32px;
+      box-shadow: 14px 14px 0 var(--cyan);
+    }
+
+    .node.mid .nodename {
+      font-size: 84px;
+    }
+
+    .node.mid .role {
+      color: var(--cyan);
+    }
+
+    .arrow {
+      position: relative;
+      flex: 0 0 130px;
+      height: 60px;
+      margin: 0 -8px;
+    }
+
+    .arrow::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 18px;
+      width: 100px;
+      height: 24px;
+      background: var(--cyan);
+      border: 6px solid var(--black);
+      border-right: 0;
+    }
+
+    .arrow::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 0;
+      height: 0;
+      border-top: 30px solid transparent;
+      border-bottom: 30px solid transparent;
+      border-left: 42px solid var(--black);
+    }
+
+    .arrow .head {
+      position: absolute;
+      right: 9px;
+      top: 12px;
+      width: 0;
+      height: 0;
+      border-top: 18px solid transparent;
+      border-bottom: 18px solid transparent;
+      border-left: 25px solid var(--cyan);
+      z-index: 1;
+    }
+
+    /* decorative slabs */
+    .slab-1 {
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 280px;
+      height: 130px;
+      background: var(--cyan);
+      border-left: 10px solid var(--black);
+      border-bottom: 10px solid var(--black);
+      z-index: 2;
+    }
+
+    .slab-2 {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 230px;
+      height: 90px;
+      background: var(--blue);
+      border-right: 10px solid var(--black);
+      border-top: 10px solid var(--black);
+      z-index: 2;
+    }
+
+    .footer {
+      position: absolute;
+      right: 70px;
+      bottom: 28px;
+      font-size: 32px;
+      font-weight: 900;
+      color: var(--black);
+      z-index: 4;
+    }
+  </style>
+</head>
+<body>
+  <main class="poster" aria-label="Substack MCP 導入ガイドのサムネイル">
+    <div class="grid-line-h" aria-hidden="true"></div>
+    <div class="slab-1" aria-hidden="true"></div>
+    <div class="slab-2" aria-hidden="true"></div>
+
+    <header class="header">
+      <div class="tag">AI × Substack</div>
+      <div class="tag cyan">SETUP GUIDE</div>
+    </header>
+
+    <section class="title-block">
+      <h1>
+        <span class="verb">「AIさん、</span><br>
+        <span class="brand"><span>投稿しといて</span></span><span class="verb">」</span>
+      </h1>
+      <div class="subtitle">
+        が、<u>本当に通じる時代</u>になりました。
+      </div>
+    </section>
+
+    <section class="pipeline" aria-label="ClaudeとSubstackをMCPでつなぐ図">
+      <div class="node">
+        <div class="nodename">あなた</div>
+        <div class="role">日本語でお願い</div>
+      </div>
+
+      <div class="arrow" aria-hidden="true"><span class="head"></span></div>
+
+      <div class="node mid">
+        <div class="nodename">AI</div>
+        <div class="role">合鍵で代わりに動く</div>
+      </div>
+
+      <div class="arrow" aria-hidden="true"><span class="head"></span></div>
+
+      <div class="node">
+        <div class="nodename">Substack</div>
+        <div class="role">記事が公開される</div>
+      </div>
+    </section>
+
+    <div class="footer">@taiyokimura</div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Codexとは？</title>
+  <style>
+    :root {
+      --paper: #FAFAF7;
+      --black: #050505;
+      --blue: #0A2BFF;
+      --cyan: #00E5FF;
+      --white: #FFFFFF;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 1920px;
+      height: 1080px;
+      margin: 0;
+      overflow: hidden;
+      background: var(--paper);
+      font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic UI", system-ui, sans-serif;
+      color: var(--black);
+      letter-spacing: 0;
+    }
+
+    .poster {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      background: var(--paper);
+      border: 10px solid var(--black);
+    }
+
+    .poster::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 810px;
+      height: 10px;
+      background: var(--black);
+    }
+
+    .poster::after {
+      content: "";
+      position: absolute;
+      left: 760px;
+      top: 0;
+      width: 10px;
+      height: 810px;
+      background: var(--black);
+    }
+
+    .left-panel {
+      position: absolute;
+      left: 70px;
+      top: 74px;
+      width: 650px;
+      z-index: 2;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 74px;
+      padding: 0 34px;
+      border: 7px solid var(--black);
+      background: var(--white);
+      color: var(--black);
+      font-size: 42px;
+      line-height: 1;
+      font-weight: 900;
+    }
+
+    h1 {
+      margin: 42px 0 0;
+      width: 650px;
+      font-size: 178px;
+      line-height: 0.9;
+      font-weight: 950;
+      letter-spacing: 0;
+    }
+
+    h1 span {
+      display: block;
+    }
+
+    .subtitle {
+      margin-top: 32px;
+      width: 650px;
+      font-size: 52px;
+      line-height: 1.18;
+      font-weight: 900;
+    }
+
+    .cyan-bar {
+      position: absolute;
+      left: 70px;
+      top: 690px;
+      width: 590px;
+      height: 32px;
+      background: var(--cyan);
+      border: 7px solid var(--black);
+      z-index: 1;
+    }
+
+    .step-diagram {
+      position: absolute;
+      left: 815px;
+      top: 300px;
+      width: 1015px;
+      height: 310px;
+      display: flex;
+      align-items: center;
+      z-index: 2;
+    }
+
+    .block {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      border: 8px solid var(--black);
+      background: var(--white);
+      color: var(--black);
+      font-weight: 950;
+      box-shadow: 14px 14px 0 var(--black);
+    }
+
+    .request {
+      width: 220px;
+      height: 180px;
+      font-size: 64px;
+    }
+
+    .codex {
+      width: 390px;
+      height: 280px;
+      flex-direction: column;
+      gap: 20px;
+      background: var(--blue);
+      color: var(--white);
+    }
+
+    .codex-title {
+      font-size: 82px;
+      line-height: 1;
+      color: var(--white);
+      font-weight: 950;
+    }
+
+    .codex-small {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 270px;
+      height: 58px;
+      padding: 0 18px;
+      border: 5px solid var(--white);
+      color: var(--white);
+      font-size: 30px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .outcome {
+      width: 245px;
+      height: 205px;
+      flex-direction: column;
+      gap: 18px;
+      font-size: 58px;
+      line-height: 1;
+    }
+
+    .outcome-small {
+      width: 180px;
+      padding-top: 4px;
+      border-top: 8px solid var(--black);
+      font-size: 34px;
+      line-height: 1.12;
+      font-weight: 950;
+    }
+
+    .arrow {
+      position: relative;
+      flex: 0 0 115px;
+      height: 72px;
+      margin: 0 18px;
+    }
+
+    .arrow::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 24px;
+      width: 86px;
+      height: 24px;
+      background: var(--cyan);
+      border: 5px solid var(--black);
+      border-right: 0;
+    }
+
+    .arrow::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      top: 6px;
+      width: 0;
+      height: 0;
+      border-top: 30px solid transparent;
+      border-bottom: 30px solid transparent;
+      border-left: 42px solid var(--black);
+    }
+
+    .arrow-head {
+      position: absolute;
+      right: 9px;
+      top: 18px;
+      width: 0;
+      height: 0;
+      border-top: 18px solid transparent;
+      border-bottom: 18px solid transparent;
+      border-left: 25px solid var(--cyan);
+      z-index: 1;
+    }
+
+    .right-mark {
+      position: absolute;
+      right: 72px;
+      top: 72px;
+      width: 270px;
+      height: 118px;
+      background: var(--cyan);
+      border: 8px solid var(--black);
+      box-shadow: -18px 18px 0 var(--blue);
+      z-index: 1;
+    }
+
+    .blue-slab {
+      position: absolute;
+      right: 0;
+      bottom: 260px;
+      width: 130px;
+      height: 360px;
+      background: var(--blue);
+      border-left: 10px solid var(--black);
+      border-top: 10px solid var(--black);
+      border-bottom: 10px solid var(--black);
+      z-index: 0;
+    }
+
+    .chips {
+      position: absolute;
+      left: 70px;
+      right: 70px;
+      bottom: 74px;
+      height: 122px;
+      display: flex;
+      align-items: center;
+      gap: 34px;
+      z-index: 2;
+    }
+
+    .chip {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 104px;
+      min-width: 370px;
+      padding: 0 38px;
+      border: 8px solid var(--black);
+      border-radius: 34px;
+      background: var(--white);
+      color: var(--black);
+      font-size: 46px;
+      line-height: 1;
+      font-weight: 950;
+      white-space: nowrap;
+    }
+
+    .chip:nth-child(2) {
+      min-width: 340px;
+    }
+
+    .chip:nth-child(3) {
+      min-width: 330px;
+    }
+
+    .bottom-block {
+      position: absolute;
+      right: 70px;
+      bottom: 72px;
+      width: 450px;
+      height: 108px;
+      background: var(--blue);
+      border: 8px solid var(--black);
+      z-index: 1;
+    }
+  </style>
+</head>
+<body>
+  <main class="poster" aria-label="Codex解説サムネイル">
+    <section class="left-panel">
+      <div class="tag">AI解説</div>
+      <h1><span>Codex</span><span>とは？</span></h1>
+      <div class="subtitle">コード作業を一緒に進めるAIエージェント</div>
+    </section>
+
+    <div class="cyan-bar" aria-hidden="true"></div>
+    <div class="right-mark" aria-hidden="true"></div>
+    <div class="blue-slab" aria-hidden="true"></div>
+
+    <section class="step-diagram" aria-label="依頼から成果までの3ステップ">
+      <div class="block request">依頼</div>
+      <div class="arrow" aria-hidden="true"><span class="arrow-head"></span></div>
+      <div class="block codex">
+        <div class="codex-title">Codex</div>
+        <div class="codex-small">読む・考える・直す</div>
+      </div>
+      <div class="arrow" aria-hidden="true"><span class="arrow-head"></span></div>
+      <div class="block outcome">
+        <div>成果</div>
+        <div class="outcome-small">修正済みコード</div>
+      </div>
+    </section>
+
+    <div class="bottom-block" aria-hidden="true"></div>
+    <section class="chips" aria-label="Codexができること">
+      <div class="chip">ファイルを読む</div>
+      <div class="chip">コードを書く</div>
+      <div class="chip">テストする</div>
+    </section>
+  </main>
+</body>
+</html>
