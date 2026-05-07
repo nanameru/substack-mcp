@@ -46,6 +46,34 @@ claude mcp add substack-mcp --scope user -- /Users/$USER/substack/.venv/bin/subs
 
 Restart Claude Code, then `/mcp` should show `substack-mcp` as `connected`.
 
+### (Optional) Install the `substack-article` skill
+
+This repo also ships a [Vercel Skills](https://skills.sh/)-compatible **agent skill**
+that uses the MCP above to plan, draft, generate a thumbnail, and publish a
+Substack article in one flow.
+
+```bash
+# Globally for all projects
+npx skills add nanameru/substack-mcp -g -a claude-code -y
+
+# Or scoped to the current project
+npx skills add nanameru/substack-mcp -a claude-code
+```
+
+Restart Claude Code. The skill is automatically invoked when you say things like
+「Substack 記事を書いて」 / 「Substack に投稿して」 / 「短文ポストして」.
+
+`npx skills` works with Claude Code, Cursor, Codex, OpenCode, GitHub Copilot,
+and 50+ other agents. See [skills.sh](https://skills.sh/) for details.
+
+The skill expects:
+
+- `substack-mcp` registered as an MCP (above)
+- `codex` MCP registered (for thumbnail generation; optional if you skip thumbnails)
+- macOS with Hiragino fonts installed (default on macOS for Japanese text overlay)
+
+See `skills/substack-article/SKILL.md` for the full flow and guardrails.
+
 ### How auth works
 
 By default `substack-mcp-setup` reads the `substack.sid` cookie directly from

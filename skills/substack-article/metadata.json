@@ -1,0 +1,9 @@
+{
+  "version": "1.0.0",
+  "abstract": "Substack の記事（長文ポスト）と Notes（短文ポスト）を企画→執筆→サムネ生成→公開まで一気通貫で行うスキル。substack-mcp と Codex MCP を組み合わせて、Claude Code から Substack を操作する。",
+  "references": [
+    "https://github.com/nanameru/substack-mcp",
+    "https://github.com/ma2za/python-substack",
+    "https://substack.com"
+  ]
+}
