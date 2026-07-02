@@ -18,6 +18,7 @@ dependencies = [
 [project.scripts]
 substack-mcp = "substack_mcp.server:main"
 substack-mcp-setup = "substack_mcp.setup_cli:main"
+substack-publish-article = "substack_mcp.article_cli:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -1,0 +1,19 @@
+version: 1
+project:
+  name: "substack-mcp"
+  test_command: "PYTHONPATH=src python -m unittest discover -s tests"
+  repo: "nanameru/substack-mcp"
+
+source_roots: [src, tests, scripts]
+
+cases:
+  - id: TC-001
+    title: "サムネ付き記事投稿CLI: Markdown本文とカバー画像からSubstack下書きを作成し、明示指定時だけ公開する"
+    feature: "サムネ付き記事投稿CLI"
+    scenario: "Markdown本文とカバー画像からSubstack下書きを作成し、明示指定時だけ公開する"
+    status: done
+    priority: medium
+    type: regression
+    source: [src/substack_mcp/article_cli.py]
+    test_file: "tests/test_article_cli.py"
+    issues: [1]
