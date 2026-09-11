@@ -46,6 +46,68 @@ claude mcp add substack-mcp --scope user -- /Users/$USER/substack/.venv/bin/subs
 
 Restart Claude Code, then `/mcp` should show `substack-mcp` as `connected`.
 
+### Run fully in the cloud with Cloudflare
+
+The Cloudflare deployment exposes a stable, OAuth 2.1-protected Streamable HTTP
+endpoint at `https://<worker>.workers.dev/mcp`. ChatGPT performs the writing and
+reasoning; the Worker and its on-demand Python Container only execute Substack
+operations. No OpenAI API key, Secure MCP Tunnel, or always-on computer is
+required.
+
+Requirements:
+
+- a Cloudflare account with Workers Containers enabled
+- Node.js 22.18 or newer
+- a GitHub OAuth App used only to verify who may connect
+- a current `substack.sid` session token (store it as a Cloudflare secret)
+
+Install and create the OAuth state store:
+
+```bash
+npm install
+npx wrangler login
+npx wrangler kv namespace create OAUTH_KV
+```
+
+Put the returned namespace ID in `wrangler.jsonc` in place of
+`REPLACE_WITH_OAUTH_KV_ID`. Your final Worker URL will normally be:
+
+```text
+https://substack-mcp.<your-workers-subdomain>.workers.dev
+```
+
+Create a GitHub OAuth App with that URL as its homepage and
+`https://substack-mcp.<your-workers-subdomain>.workers.dev/callback` as its
+authorization callback URL. Then store all private values using Wrangler's
+interactive secret prompt (never commit them or paste them into chat):
+
+```bash
+npx wrangler secret put GITHUB_CLIENT_ID
+npx wrangler secret put GITHUB_CLIENT_SECRET
+npx wrangler secret put ALLOWED_GITHUB_LOGINS
+npx wrangler secret put SUBSTACK_PUBLICATION_URL
+npx wrangler secret put SUBSTACK_SESSION_TOKEN
+npm run deploy
+```
+
+`ALLOWED_GITHUB_LOGINS` is a comma-separated allowlist, for example
+`nanameru`. `SUBSTACK_PUBLICATION_URL` is the full publication URL. For the
+session token, copy only the value of the `substack.sid` cookie from a browser
+that is logged in to Substack. The browser is needed once for setup; it does not
+need to remain open afterward. Signing out of all Substack sessions invalidates
+this credential, so update the Cloudflare secret after doing that.
+
+In ChatGPT developer mode, create an app/connector from:
+
+```text
+https://substack-mcp.<your-workers-subdomain>.workers.dev/mcp
+```
+
+Choose OAuth when prompted and sign in with an allowlisted GitHub account.
+Draft creation is non-public. Publishing, subscriber email, draft deletion, and
+Notes remain confirmation-gated by the tool descriptions and the bundled
+`substack-article` skill.
+
 ### Connect to ChatGPT Work with Secure MCP Tunnel
 
 This server uses the local `substack.sid` browser session and should not be

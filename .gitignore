@@ -44,6 +44,10 @@ cookies.json
 # Build artifacts
 thumbnails/*.png
 !thumbnails/.gitkeep
+node_modules/
+.wrangler/
+.dev.vars
+.dev.vars.*
 
 # OS
 Thumbs.db
