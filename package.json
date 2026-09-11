@@ -1,0 +1,28 @@
+{
+  "name": "substack-mcp-cloudflare",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "type-check": "tsc --noEmit",
+    "cf-typegen": "wrangler types worker-configuration.d.ts"
+  },
+  "dependencies": {
+    "@cloudflare/containers": "^0.3.7",
+    "@cloudflare/workers-oauth-provider": "^0.8.1",
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "@modelcontextprotocol/server": "^2.0.0",
+    "agents": "^0.23.0",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260911.1",
+    "typescript": "^6.0.3",
+    "wrangler": "^4.115.0"
+  }
+}

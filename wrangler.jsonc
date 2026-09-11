@@ -1,0 +1,38 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "substack-mcp",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  "containers": [
+    {
+      "class_name": "SubstackContainer",
+      "image": "./Dockerfile.cloudflare",
+      "max_instances": 1,
+      "name": "substack-mcp-backend"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "class_name": "SubstackContainer",
+        "name": "SUBSTACK_CONTAINER"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "new_sqlite_classes": ["SubstackContainer"],
+      "tag": "v1"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "OAUTH_KV",
+      "id": "REPLACE_WITH_OAUTH_KV_ID"
+    }
+  ]
+}
