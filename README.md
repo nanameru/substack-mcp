@@ -46,6 +46,45 @@ claude mcp add substack-mcp --scope user -- /Users/$USER/substack/.venv/bin/subs
 
 Restart Claude Code, then `/mcp` should show `substack-mcp` as `connected`.
 
+### Connect to ChatGPT Work with Secure MCP Tunnel
+
+This server uses the local `substack.sid` browser session and should not be
+published directly on the internet. For a private ChatGPT Work connection, use
+[OpenAI Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels).
+The tunnel keeps the stdio MCP and Substack credential on your Mac while making
+the tools available to an authorized ChatGPT workspace.
+
+Prerequisites:
+
+- macOS with Chrome, Brave, Edge, Chromium, Vivaldi, or Opera already signed in
+  to Substack
+- ChatGPT developer mode enabled
+- an OpenAI Platform tunnel ID associated with the target ChatGPT workspace
+- `tunnel-client` installed from OpenAI Platform tunnel settings
+- a tunnel runtime API key with **Tunnels Read + Use** permission
+
+Run:
+
+```bash
+git clone https://github.com/nanameru/substack-mcp.git
+cd substack-mcp
+
+# Keep these values out of shell history when possible. Never commit them.
+export SUBSTACK_TUNNEL_ID="tunnel_..."
+export CONTROL_PLANE_API_KEY="sk-..."
+
+./scripts/setup-chatgpt-work-tunnel.sh
+tunnel-client run --profile substack-mcp
+```
+
+Then open ChatGPT Plugins, create a developer-mode app, choose **Tunnel** under
+Connection, and select the tunnel. The Mac and `tunnel-client` process must stay
+running while ChatGPT calls the Substack tools.
+
+The helper never prints or uploads the Substack session token. It runs
+`substack-mcp-setup` locally, stores the credential with `0600` permissions, and
+points the tunnel at the local stdio command.
+
 ### (Optional) Install the `substack-article` skill
 
 This repo also ships a [Vercel Skills](https://skills.sh/)-compatible **agent skill**
