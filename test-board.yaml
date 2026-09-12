@@ -1,0 +1,22 @@
+version: 1
+project:
+  name: "substack-mcp"
+  test_command: "npm run type-check"
+  repo: "nanameru/substack-mcp"
+
+source_roots:
+  - worker
+  - src
+
+cases: []
+  - id: TC-001
+    title: "Cloudflare Remote MCP本番デプロイ: OAuth保護されたMCPへ接続し読み取り専用で下書きを1件取得する"
+    feature: "Cloudflare Remote MCP本番デプロイ"
+    scenario: "OAuth保護されたMCPへ接続し読み取り専用で下書きを1件取得する"
+    status: doing
+    priority: high
+    type: e2e
+    source: [worker/index.ts, worker/oauth.ts, src/substack_mcp/cloud_api.py, wrangler.jsonc]
+    test_file: ""
+    issues: [6]
+    notes: "本番OAuth接続後、tools/listとlist_drafts(limit=1)のみを実行する。書き込み系ツールは呼ばない。"

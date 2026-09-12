@@ -32,7 +32,7 @@
   "kv_namespaces": [
     {
       "binding": "OAUTH_KV",
-      "id": "REPLACE_WITH_OAUTH_KV_ID"
+      "id": "2804e83ca60f4b6487b038442fed4779"
     }
   ]
 }
