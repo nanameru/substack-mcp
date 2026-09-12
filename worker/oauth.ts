@@ -92,7 +92,7 @@ async function authorizeGet(request: Request, env: OAuthEnv): Promise<Response> 
   return new Response(html, {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
-      "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+      "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self' https://github.com/login/oauth/authorize; base-uri 'none'; frame-ancestors 'none'",
       "Referrer-Policy": "no-referrer",
       "X-Frame-Options": "DENY",
       "Set-Cookie": secureCookie(CSRF_COOKIE, csrf, 600),
