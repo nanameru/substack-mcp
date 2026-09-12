@@ -161,8 +161,22 @@ async function callback(request: Request, env: OAuthEnv): Promise<Response> {
     }),
   });
   if (!tokenResponse.ok) return jsonError("GitHub token exchange failed", 502);
-  const tokenData = (await tokenResponse.json()) as { access_token?: string };
-  if (!tokenData.access_token) return jsonError("GitHub did not return an access token", 502);
+  const tokenData = (await tokenResponse.json()) as {
+    access_token?: string;
+    error?: string;
+  };
+  if (!tokenData.access_token) {
+    // GitHub commonly returns HTTP 200 with a machine-readable OAuth error.
+    // Surface only that non-secret error code so credential/configuration issues
+    // can be distinguished without logging the authorization code or secrets.
+    const oauthError = tokenData.error?.replace(/[^a-z0-9_]/gi, "").slice(0, 80);
+    return jsonError(
+      oauthError
+        ? `GitHub token exchange failed: ${oauthError}`
+        : "GitHub did not return an access token",
+      502,
+    );
+  }
 
   const userResponse = await fetch("https://api.github.com/user", {
     headers: {
