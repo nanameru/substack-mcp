@@ -18,8 +18,8 @@ cases:
     type: e2e
     source: [worker/index.ts, worker/oauth.ts, src/substack_mcp/cloud_api.py, wrangler.jsonc]
     test_file: ""
-    issues: [6]
-    notes: "2026-09-12にChatGPTからOAuth接続し、11ツールの認識とlist_drafts(limit=1)の成功を確認。記事本文は表示せず、書き込み系ツールは未実行。"
+    issues: [6, 8]
+    notes: "2026-09-12にChatGPTからOAuth接続し、11ツールの認識とlist_drafts(limit=1)の成功を確認。Issue #8の再デプロイ後にもGPT Workから再確認。記事本文は表示せず、書き込み系ツールは未実行。"
   - id: TC-002
     title: "Substack Notes投稿: 上流HTTP失敗を秘密情報なしで診断し正しいpayloadを送る"
     feature: "Substack Notes投稿"
