@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
@@ -14,6 +15,8 @@ from substack.post import Post
 from .auth import Credentials, load_credentials, write_cookie_file
 
 logger = logging.getLogger(__name__)
+
+_SAFE_DIAGNOSTIC_TOKEN_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}\Z")
 
 VALID_AUDIENCES = {"everyone", "only_paid", "founding", "only_free"}
 
@@ -38,6 +41,73 @@ _BLOCKED_PATH_PREFIXES = [
     Path.home() / "Library" / "Keychains",
     Path.home() / "Library" / "Cookies",
 ]
+
+
+def _safe_diagnostic_token(value: Any) -> Optional[str]:
+    """Return a bounded, non-free-form upstream diagnostic identifier."""
+    if not isinstance(value, (str, int)):
+        return None
+    token = str(value)
+    if not _SAFE_DIAGNOSTIC_TOKEN_RE.fullmatch(token):
+        return None
+    return token
+
+
+class SubstackHTTPError(RuntimeError):
+    """A Substack HTTP failure containing only safe diagnostic metadata."""
+
+    def __init__(
+        self,
+        operation: str,
+        status_code: int,
+        *,
+        error_code: Optional[str] = None,
+        request_id: Optional[str] = None,
+    ) -> None:
+        super().__init__(operation, status_code)
+        self.operation = operation
+        self.status_code = status_code
+        self.error_code = error_code
+        self.request_id = request_id
+
+    @classmethod
+    def from_response(cls, operation: str, response: Any) -> "SubstackHTTPError":
+        error_code = None
+        try:
+            payload = response.json()
+        except (TypeError, ValueError):
+            payload = None
+        if isinstance(payload, dict):
+            for field in ("error_code", "code", "type"):
+                error_code = _safe_diagnostic_token(payload.get(field))
+                if error_code is not None:
+                    break
+
+        request_id = None
+        headers = getattr(response, "headers", {})
+        for header in ("x-request-id", "request-id", "cf-ray"):
+            request_id = _safe_diagnostic_token(headers.get(header))
+            if request_id is not None:
+                break
+
+        return cls(
+            operation,
+            int(response.status_code),
+            error_code=error_code,
+            request_id=request_id,
+        )
+
+    def public_message(self) -> str:
+        fields = [
+            "Substack upstream request failed",
+            f"operation={self.operation}",
+            f"status={self.status_code}",
+        ]
+        if self.error_code is not None:
+            fields.append(f"code={self.error_code}")
+        if self.request_id is not None:
+            fields.append(f"request_id={self.request_id}")
+        return "; ".join(fields)
 
 
 def _validate_image_path(image: str) -> None:
@@ -82,7 +152,7 @@ def _text_to_prosemirror_doc(text: str) -> dict:
         content = [{"type": "paragraph"}]
     return {
         "type": "doc",
-        "attrs": {"schemaVersion": "v1", "title": None},
+        "attrs": {"schemaVersion": "v1"},
         "content": content,
     }
 
@@ -312,14 +382,12 @@ class SubstackClient:
         }
 
         response = self._api._session.post(
-            "https://substack.com/api/v1/comment/feed",
+            "https://substack.com/api/v1/comment/feed/",
             json=payload,
             timeout=15,
         )
         if not (200 <= response.status_code < 300):
-            raise RuntimeError(
-                f"Note post failed: HTTP {response.status_code} {response.text[:500]}"
-            )
+            raise SubstackHTTPError.from_response("post_note", response)
         data = response.json()
         note_id = data.get("id") or data.get("note_id")
         # Public Notes URL: https://substack.com/@<handle>/note/c-<id>

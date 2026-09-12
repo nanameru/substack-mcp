@@ -20,3 +20,14 @@ cases:
     test_file: ""
     issues: [6]
     notes: "2026-09-12にChatGPTからOAuth接続し、11ツールの認識とlist_drafts(limit=1)の成功を確認。記事本文は表示せず、書き込み系ツールは未実行。"
+  - id: TC-002
+    title: "Substack Notes投稿: 上流HTTP失敗を秘密情報なしで診断し正しいpayloadを送る"
+    feature: "Substack Notes投稿"
+    scenario: "上流HTTP失敗を秘密情報なしで診断し正しいpayloadを送る"
+    status: done
+    priority: medium
+    type: regression
+    source: [src/substack_mcp/client.py, src/substack_mcp/cloud_api.py]
+    test_file: "tests/test_note_posting.py"
+    issues: [8]
+    notes: "2026-09-12に実送信せずFakeSessionでpayload、上流HTTP診断の許可リスト、未知例外の秘匿を5テストで検証。Python構文、TypeScript型検査、Container dry-runも成功。"

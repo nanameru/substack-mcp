@@ -9,7 +9,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 from urllib.parse import urlparse
 
-from .client import SubstackClient
+from .client import SubstackClient, SubstackHTTPError
 
 logger = logging.getLogger("substack-mcp-cloud-api")
 MAX_BODY_BYTES = 8 * 1024 * 1024
@@ -94,6 +94,13 @@ def _invoke(tool: str, arguments: dict[str, Any]) -> Any:
     raise ValueError(f"Unknown tool: {tool}")
 
 
+def _public_error_response(exc: Exception) -> tuple[int, dict[str, str]]:
+    """Map exceptions to responses without exposing credentials or request bodies."""
+    if isinstance(exc, SubstackHTTPError):
+        return 502, {"error": exc.public_message()}
+    return 502, {"error": f"Substack operation failed: {type(exc).__name__}"}
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "substack-mcp-cloud-api"
 
@@ -127,9 +134,20 @@ class Handler(BaseHTTPRequestHandler):
             self._json(200, {"result": _invoke(tool, arguments)})
         except (KeyError, TypeError, ValueError) as exc:
             self._json(400, {"error": str(exc)})
+        except SubstackHTTPError as exc:
+            logger.warning(
+                "Substack upstream request failed operation=%s status=%s code=%s request_id=%s",
+                exc.operation,
+                exc.status_code,
+                exc.error_code,
+                exc.request_id,
+            )
+            status, response = _public_error_response(exc)
+            self._json(status, response)
         except Exception as exc:  # keep credentials and tracebacks out of responses
-            logger.exception("Substack operation failed")
-            self._json(502, {"error": f"Substack operation failed: {type(exc).__name__}"})
+            logger.error("Substack operation failed exception_type=%s", type(exc).__name__)
+            status, response = _public_error_response(exc)
+            self._json(status, response)
 
     def log_message(self, format: str, *args: Any) -> None:
         logger.info(format, *args)
