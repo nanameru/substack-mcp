@@ -8,5 +8,6 @@
     "strict": true,
     "types": ["@cloudflare/workers-types"]
   },
-  "include": ["worker/**/*.ts"]
+  "include": ["worker/**/*.ts"],
+  "exclude": ["worker/**/*.test.ts"]
 }

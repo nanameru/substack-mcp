@@ -6,6 +6,12 @@ import { createMcpHandler, getMcpAuthContext } from "agents/mcp/server";
 import { z } from "zod";
 
 import { authHandler } from "./oauth";
+import {
+  listNoteHistory,
+  markNotePublished,
+  markNoteUnknown,
+  reserveNote,
+} from "./note-history";
 import type { Env } from "./types";
 
 const env = cloudflareEnv as unknown as Env;
@@ -65,7 +71,7 @@ function result(value: unknown) {
 }
 
 function createServer() {
-  const server = new McpServer({ name: "Substack MCP", version: "0.2.0" });
+  const server = new McpServer({ name: "Substack MCP", version: "0.3.0" });
 
   server.registerTool(
     "create_draft",
@@ -198,6 +204,21 @@ function createServer() {
   );
 
   server.registerTool(
+    "list_note_history",
+    {
+      title: "List recent Substack Note history",
+      description:
+        "Read recent Note bodies and publication states before drafting a new Note. Use this to avoid repeating the same topic, angle, or wording.",
+      inputSchema: { limit: z.number().int().min(1).max(50).default(20) },
+      annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+    },
+    async (args) => {
+      assertAuthorized();
+      return result(await listNoteHistory(env.NOTE_HISTORY_DB, args.limit));
+    },
+  );
+
+  server.registerTool(
     "post_note",
     {
       title: "Publish Substack Note",
@@ -224,7 +245,22 @@ function createServer() {
       if (!text) {
         throw new Error("post_note requires the complete Note body in text or content");
       }
-      return result(await invoke("post_note", { text }));
+      assertAuthorized();
+      const reservation = await reserveNote(env.NOTE_HISTORY_DB, text);
+      try {
+        const published = await invoke("post_note", { text: reservation.content });
+        const record =
+          published !== null && typeof published === "object"
+            ? (published as Record<string, unknown>)
+            : {};
+        const noteId = typeof record.note_id === "string" ? record.note_id : null;
+        const noteUrl = typeof record.url === "string" ? record.url : null;
+        await markNotePublished(env.NOTE_HISTORY_DB, reservation, noteId, noteUrl);
+        return result({ ...record, history_recorded: true });
+      } catch (error) {
+        await markNoteUnknown(env.NOTE_HISTORY_DB, reservation).catch(() => undefined);
+        throw error;
+      }
     },
   );
 

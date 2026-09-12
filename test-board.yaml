@@ -31,3 +31,14 @@ cases:
     test_file: "tests/test_note_posting.py"
     issues: [8]
     notes: "2026-09-12の1回限定ライブテストでHTTP応答外のRuntimeErrorが残存。送信・応答解析phaseの安全な診断を追加。追加診断版ではChatGPT側のtext欠落を確認したため、text/contentを受けてtextへ正規化する互換スキーマを追加。修正版の承認済み1回限定テストでNote 335417972の公開と本文反映を公開feedから確認し、重複なし。7件の実送信なし回帰テスト、Python構文、TypeScript型検査、Container dry-runにも成功。"
+  - id: TC-003
+    title: "Substack Notes履歴: D1へ投稿を予約し同一本文の二重投稿を防ぐ"
+    feature: "Substack Notes投稿履歴"
+    scenario: "正規化本文を一意に予約し成功・結果不明を保存する"
+    status: done
+    priority: high
+    type: regression
+    source: [worker/index.ts, worker/note-history.ts, migrations/0001_create_note_publications.sql, wrangler.jsonc]
+    test_file: "worker/note-history.test.ts"
+    issues: [10]
+    notes: "正規化とSHA-256、同一本文の拒否、published/unknown状態、履歴の新しい順取得を4件のNodeテストで実送信なしに検証。ローカルD1 migration、TypeScript型検査、既存Python 7件、Container dry-runも成功。"

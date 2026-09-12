@@ -9,6 +9,7 @@
   "scripts": {
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
+    "test": "node --test worker/*.test.ts",
     "type-check": "tsc --noEmit",
     "cf-typegen": "wrangler types worker-configuration.d.ts"
   },
