@@ -42,3 +42,14 @@ cases:
     test_file: "worker/note-history.test.ts"
     issues: [10]
     notes: "正規化とSHA-256、同一本文の拒否、published/unknown状態、履歴の新しい順取得を4件のNodeテストで実送信なしに検証。ローカルD1 migration、TypeScript型検査、既存Python 7件、Container dry-runも成功。"
+  - id: TC-004
+    title: "Remote MCP OAuth: 並行して開始された認証フローのCSRF Cookieを分離する"
+    feature: "Cloudflare Remote MCP OAuth"
+    scenario: "同じブラウザで複数の認証画面が生成されても各フォームをGitHub認証へ進められる"
+    status: passed
+    priority: high
+    type: regression
+    source: [worker/oauth.ts]
+    test_file: "worker/oauth.test.ts"
+    issues: [10]
+    notes: "固定名のCSRF Cookieが後続の認証GETで上書きされる回帰を再現。認証フロー固有のCookie名へ変更後、並行2フローがともにGitHub認証へ遷移することをNodeテストで確認。"

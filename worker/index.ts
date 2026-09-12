@@ -71,7 +71,7 @@ function result(value: unknown) {
 }
 
 function createServer() {
-  const server = new McpServer({ name: "Substack MCP", version: "0.3.0" });
+  const server = new McpServer({ name: "Substack MCP", version: "0.3.1" });
 
   server.registerTool(
     "create_draft",

@@ -7,8 +7,8 @@ import type { Env } from "./types";
 
 type OAuthEnv = Env & { OAUTH_PROVIDER: OAuthHelpers };
 
-const CSRF_COOKIE = "__Host-SUBSTACK_MCP_CSRF";
-const STATE_COOKIE = "__Host-SUBSTACK_MCP_STATE";
+const CSRF_COOKIE_PREFIX = "__Host-SUBSTACK_MCP_CSRF_";
+const STATE_COOKIE_PREFIX = "__Host-SUBSTACK_MCP_STATE_";
 
 function jsonError(message: string, status = 400): Response {
   return Response.json({ error: message }, { status });
@@ -25,6 +25,11 @@ function cookieValue(request: Request, name: string): string | null {
 
 function secureCookie(name: string, value: string, maxAge: number): string {
   return `${name}=${value}; HttpOnly; Secure; Path=/; SameSite=Lax; Max-Age=${maxAge}`;
+}
+
+function flowCookieName(prefix: string, token: string): string {
+  const suffix = token.replace(/[^a-z0-9]/gi, "").slice(0, 64);
+  return `${prefix}${suffix || "invalid"}`;
 }
 
 async function sha256(value: string): Promise<string> {
@@ -73,6 +78,7 @@ async function authorizeGet(request: Request, env: OAuthEnv): Promise<Response> 
   if (!client) return jsonError("Unknown OAuth client");
 
   const csrf = crypto.randomUUID();
+  const csrfCookie = flowCookieName(CSRF_COOKIE_PREFIX, csrf);
   const clientName = escapeHtml(client.clientName || "ChatGPT");
   const state = escapeHtml(encodeState(authRequest));
 
@@ -95,7 +101,7 @@ async function authorizeGet(request: Request, env: OAuthEnv): Promise<Response> 
       "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self' https://github.com/login/oauth/authorize; base-uri 'none'; frame-ancestors 'none'",
       "Referrer-Policy": "no-referrer",
       "X-Frame-Options": "DENY",
-      "Set-Cookie": secureCookie(CSRF_COOKIE, csrf, 600),
+      "Set-Cookie": secureCookie(csrfCookie, csrf, 600),
     },
   });
 }
@@ -103,8 +109,11 @@ async function authorizeGet(request: Request, env: OAuthEnv): Promise<Response> 
 async function authorizePost(request: Request, env: OAuthEnv): Promise<Response> {
   const form = await request.formData();
   const csrfForm = form.get("csrf_token");
-  const csrfCookie = cookieValue(request, CSRF_COOKIE);
   const encoded = form.get("state");
+  const csrfCookie =
+    typeof csrfForm === "string"
+      ? cookieValue(request, flowCookieName(CSRF_COOKIE_PREFIX, csrfForm))
+      : null;
   if (typeof csrfForm !== "string" || !csrfCookie || csrfForm !== csrfCookie) {
     return jsonError("Invalid CSRF token");
   }
@@ -122,6 +131,7 @@ async function authorizePost(request: Request, env: OAuthEnv): Promise<Response>
     expirationTtl: 600,
   });
   const stateHash = await sha256(state);
+  const stateCookie = flowCookieName(STATE_COOKIE_PREFIX, state);
   const callback = new URL("/callback", request.url).href;
   const github = new URL("https://github.com/login/oauth/authorize");
   github.searchParams.set("client_id", env.GITHUB_CLIENT_ID);
@@ -130,8 +140,11 @@ async function authorizePost(request: Request, env: OAuthEnv): Promise<Response>
   github.searchParams.set("state", state);
 
   const headers = new Headers({ Location: github.href });
-  headers.append("Set-Cookie", secureCookie(CSRF_COOKIE, "", 0));
-  headers.append("Set-Cookie", secureCookie(STATE_COOKIE, stateHash, 600));
+  headers.append(
+    "Set-Cookie",
+    secureCookie(flowCookieName(CSRF_COOKIE_PREFIX, csrfForm), "", 0),
+  );
+  headers.append("Set-Cookie", secureCookie(stateCookie, stateHash, 600));
   return new Response(null, { status: 302, headers });
 }
 
@@ -141,7 +154,8 @@ async function callback(request: Request, env: OAuthEnv): Promise<Response> {
   const state = url.searchParams.get("state");
   if (!code || !state) return jsonError("Missing GitHub OAuth response");
 
-  const expectedHash = cookieValue(request, STATE_COOKIE);
+  const stateCookie = flowCookieName(STATE_COOKIE_PREFIX, state);
+  const expectedHash = cookieValue(request, stateCookie);
   if (!expectedHash || (await sha256(state)) !== expectedHash) {
     return jsonError("OAuth state does not match this browser session");
   }
@@ -205,7 +219,7 @@ async function callback(request: Request, env: OAuthEnv): Promise<Response> {
     status: 302,
     headers: {
       Location: redirectTo,
-      "Set-Cookie": secureCookie(STATE_COOKIE, "", 0),
+      "Set-Cookie": secureCookie(stateCookie, "", 0),
     },
   });
 }
