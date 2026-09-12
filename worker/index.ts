@@ -211,13 +211,18 @@ function createServer() {
   return server;
 }
 
-const apiHandler = createMcpHandler(createServer);
+const handleMcpRequest = createMcpHandler(createServer);
+const apiHandler = {
+  fetch(request: Request, workerEnv: Env, ctx: ExecutionContext) {
+    return handleMcpRequest(request, workerEnv, ctx);
+  },
+} satisfies ExportedHandler<Env>;
 
 export default new OAuthProvider({
   authorizeEndpoint: "/authorize",
   tokenEndpoint: "/oauth/token",
   clientRegistrationEndpoint: "/oauth/register",
   apiRoute: "/mcp",
-  apiHandler: apiHandler as any,
+  apiHandler,
   defaultHandler: authHandler,
 });
