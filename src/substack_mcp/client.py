@@ -110,6 +110,52 @@ class SubstackHTTPError(RuntimeError):
         return "; ".join(fields)
 
 
+class SubstackOperationError(RuntimeError):
+    """A non-HTTP operation failure containing no exception message or payload."""
+
+    def __init__(
+        self,
+        operation: str,
+        phase: str,
+        exception_type: str,
+        *,
+        status_code: Optional[int] = None,
+    ) -> None:
+        super().__init__(operation, phase, exception_type)
+        self.operation = operation
+        self.phase = phase
+        self.exception_type = exception_type
+        self.status_code = status_code
+
+    @classmethod
+    def from_exception(
+        cls,
+        operation: str,
+        phase: str,
+        exc: Exception,
+        *,
+        status_code: Optional[int] = None,
+    ) -> "SubstackOperationError":
+        exception_type = _safe_diagnostic_token(type(exc).__name__) or "Exception"
+        return cls(
+            operation,
+            phase,
+            exception_type,
+            status_code=status_code,
+        )
+
+    def public_message(self) -> str:
+        fields = [
+            "Substack operation failed",
+            f"operation={self.operation}",
+            f"phase={self.phase}",
+            f"exception={self.exception_type}",
+        ]
+        if self.status_code is not None:
+            fields.append(f"status={self.status_code}")
+        return "; ".join(fields)
+
+
 def _validate_image_path(image: str) -> None:
     if image.startswith(("http://", "https://")):
         return
@@ -381,14 +427,34 @@ class SubstackClient:
             "replyMinimumRole": "everyone",
         }
 
-        response = self._api._session.post(
-            "https://substack.com/api/v1/comment/feed/",
-            json=payload,
-            timeout=15,
-        )
+        try:
+            response = self._api._session.post(
+                "https://substack.com/api/v1/comment/feed/",
+                json=payload,
+                timeout=15,
+            )
+        except Exception as exc:
+            raise SubstackOperationError.from_exception(
+                "post_note", "request", exc
+            ) from None
         if not (200 <= response.status_code < 300):
             raise SubstackHTTPError.from_response("post_note", response)
-        data = response.json()
+        try:
+            data = response.json()
+        except Exception as exc:
+            raise SubstackOperationError.from_exception(
+                "post_note",
+                "response_json",
+                exc,
+                status_code=int(response.status_code),
+            ) from None
+        if not isinstance(data, dict):
+            raise SubstackOperationError(
+                "post_note",
+                "response_shape",
+                "UnexpectedPayload",
+                status_code=int(response.status_code),
+            )
         note_id = data.get("id") or data.get("note_id")
         # Public Notes URL: https://substack.com/@<handle>/note/c-<id>
         # We don't always have the handle; fall back to the user_id form.

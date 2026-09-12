@@ -6,31 +6,45 @@ import json
 import unittest
 from types import SimpleNamespace
 
-from substack_mcp.client import SubstackClient, SubstackHTTPError, _text_to_prosemirror_doc
+from substack_mcp.client import (
+    SubstackClient,
+    SubstackHTTPError,
+    SubstackOperationError,
+    _text_to_prosemirror_doc,
+)
 from substack_mcp.cloud_api import _public_error_response
 
 
 class FakeResponse:
-    def __init__(self, status_code: int, payload: dict, headers: dict[str, str] | None = None):
+    def __init__(
+        self,
+        status_code: int,
+        payload: dict | Exception,
+        headers: dict[str, str] | None = None,
+    ):
         self.status_code = status_code
         self._payload = payload
         self.headers = headers or {}
 
     def json(self) -> dict:
+        if isinstance(self._payload, Exception):
+            raise self._payload
         return self._payload
 
 
 class FakeSession:
-    def __init__(self, response: FakeResponse):
+    def __init__(self, response: FakeResponse | Exception):
         self.response = response
         self.calls: list[dict] = []
 
     def post(self, url: str, **kwargs):
         self.calls.append({"url": url, **kwargs})
+        if isinstance(self.response, Exception):
+            raise self.response
         return self.response
 
 
-def make_client(response: FakeResponse) -> tuple[SubstackClient, FakeSession]:
+def make_client(response: FakeResponse | Exception) -> tuple[SubstackClient, FakeSession]:
     session = FakeSession(response)
     client = object.__new__(SubstackClient)
     client.creds = SimpleNamespace(publication_url="https://example.substack.com")
@@ -74,6 +88,33 @@ class NotePayloadTests(unittest.TestCase):
 
 
 class NoteErrorTests(unittest.TestCase):
+    def test_request_exception_reports_phase_without_exception_message(self) -> None:
+        private_message = "transport failure containing private submitted body"
+        client, _ = make_client(RuntimeError(private_message))
+
+        with self.assertRaises(SubstackOperationError) as raised:
+            client.post_note("private submitted body")
+
+        public = raised.exception.public_message()
+        self.assertIn("phase=request", public)
+        self.assertIn("exception=RuntimeError", public)
+        self.assertNotIn(private_message, public)
+        self.assertNotIn("private submitted body", public)
+
+    def test_success_response_json_exception_reports_parse_phase(self) -> None:
+        private_message = "parser failure containing response payload"
+        client, _ = make_client(FakeResponse(200, RuntimeError(private_message)))
+
+        with self.assertRaises(SubstackOperationError) as raised:
+            client.post_note("body must not appear")
+
+        public = raised.exception.public_message()
+        self.assertIn("phase=response_json", public)
+        self.assertIn("exception=RuntimeError", public)
+        self.assertIn("status=200", public)
+        self.assertNotIn(private_message, public)
+        self.assertNotIn("body must not appear", public)
+
     def test_upstream_failure_exposes_only_safe_diagnostics(self) -> None:
         private_message = "invalid cookie substack.sid=do-not-leak and submitted body"
         response = FakeResponse(

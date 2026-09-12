@@ -30,4 +30,4 @@ cases:
     source: [src/substack_mcp/client.py, src/substack_mcp/cloud_api.py]
     test_file: "tests/test_note_posting.py"
     issues: [8]
-    notes: "2026-09-12に実送信せずFakeSessionでpayload、上流HTTP診断の許可リスト、未知例外の秘匿を5テストで検証。Python構文、TypeScript型検査、Container dry-runも成功。"
+    notes: "2026-09-12の1回限定ライブテストでHTTP応答外のRuntimeErrorが残存。送信・応答解析phaseの安全な診断を追加し、実送信なしの7テスト、Python構文、TypeScript型検査、Container dry-runに成功。"
