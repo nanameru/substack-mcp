@@ -30,4 +30,4 @@ cases:
     source: [worker/index.ts, src/substack_mcp/client.py, src/substack_mcp/cloud_api.py]
     test_file: "tests/test_note_posting.py"
     issues: [8]
-    notes: "2026-09-12の1回限定ライブテストでHTTP応答外のRuntimeErrorが残存。送信・応答解析phaseの安全な診断を追加。追加診断版の1回限定テストでは、ChatGPT側がtextを渡さずMCP入力検証で停止したため、text/contentを受けてtextへ正規化する互換スキーマを追加。実送信なしの7テスト、Python構文、TypeScript型検査、Container dry-runを品質ゲートに使用。"
+    notes: "2026-09-12の1回限定ライブテストでHTTP応答外のRuntimeErrorが残存。送信・応答解析phaseの安全な診断を追加。追加診断版ではChatGPT側のtext欠落を確認したため、text/contentを受けてtextへ正規化する互換スキーマを追加。修正版の承認済み1回限定テストでNote 335417972の公開と本文反映を公開feedから確認し、重複なし。7件の実送信なし回帰テスト、Python構文、TypeScript型検査、Container dry-runにも成功。"
