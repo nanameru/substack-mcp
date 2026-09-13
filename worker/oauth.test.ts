@@ -100,9 +100,45 @@ test("keeps concurrent authorization forms valid in the same browser", async () 
   const firstPost = await submit(firstCsrf, firstState);
   assert.equal(firstPost.status, 302);
   assert.match(firstPost.headers.get("Location") ?? "", /^https:\/\/github\.com\/login\/oauth\/authorize/);
-  updateCookieJar(cookies, firstPost.headers.get("Set-Cookie"));
+  for (const cookie of firstPost.headers.getSetCookie()) updateCookieJar(cookies, cookie);
 
   const secondPost = await submit(secondCsrf, secondState);
   assert.equal(secondPost.status, 302);
   assert.match(secondPost.headers.get("Location") ?? "", /^https:\/\/github\.com\/login\/oauth\/authorize/);
 });
+
+test("authorization pages cannot be cached", async () => {
+  const response = await authHandler.fetch!(new Request(`${BASE_URL}/authorize`), {
+    OAUTH_PROVIDER: {
+      async parseAuthRequest() { return { clientId: "test" }; },
+      async lookupClient() { return { clientName: "ChatGPT" }; },
+    },
+  } as never, {} as ExecutionContext);
+  assert.match(response.headers.get("Cache-Control") ?? "", /no-store/);
+});
+
+for (const scenario of [
+  { name: "missing form", token: null, cookie: "", code: "CSRF_FORM_MISSING" },
+  { name: "missing cookie", token: "diagnostic-token", cookie: "", code: "CSRF_COOKIE_MISSING" },
+  { name: "mismatch", token: "diagnostic-token", cookie: "__Host-SUBSTACK_MCP_CSRF_diagnostictoken=wrong-secret-value", code: "CSRF_TOKEN_MISMATCH" },
+]) {
+  test(`rejects ${scenario.name} with a safe diagnostic and no side effects`, async () => {
+    const kv = new FakeKv();
+    const form = new URLSearchParams({ state: "private-state" });
+    if (scenario.token) form.set("csrf_token", scenario.token);
+    for (const accept of ["application/json", "text/html"]) {
+      const response = await authHandler.fetch!(new Request(`${BASE_URL}/authorize`, {
+        method: "POST", headers: { Cookie: scenario.cookie, Accept: accept }, body: form,
+      }), { OAUTH_KV: kv } as never, {} as ExecutionContext);
+      assert.equal(response.status, 400);
+      assert.match(response.headers.get("Cache-Control") ?? "", /no-store/);
+      const body = await response.text();
+      assert.ok(body.includes(scenario.code));
+      for (const secret of ["diagnostic-token", "wrong-secret-value", "private-state"]) {
+        assert.ok(!body.includes(secret));
+      }
+      assert.equal(response.headers.get("Location"), null);
+      assert.equal(kv.values.size, 0);
+    }
+  });
+}

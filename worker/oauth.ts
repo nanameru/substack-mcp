@@ -9,9 +9,32 @@ type OAuthEnv = Env & { OAUTH_PROVIDER: OAuthHelpers };
 
 const CSRF_COOKIE_PREFIX = "__Host-SUBSTACK_MCP_CSRF_";
 const STATE_COOKIE_PREFIX = "__Host-SUBSTACK_MCP_STATE_";
+const NO_STORE = { "Cache-Control": "no-store, max-age=0", Pragma: "no-cache" };
 
 function jsonError(message: string, status = 400): Response {
-  return Response.json({ error: message }, { status });
+  return Response.json({ error: message }, { status, headers: NO_STORE });
+}
+
+function csrfError(request: Request, code: "CSRF_FORM_MISSING" | "CSRF_COOKIE_MISSING" | "CSRF_TOKEN_MISMATCH"): Response {
+  const messages = {
+    CSRF_FORM_MISSING: "認証フォームの確認情報を受け取れませんでした。ChatGPTのアプリ設定から接続を開始し直してください。",
+    CSRF_COOKIE_MISSING: "この認証ページの確認用Cookieがブラウザから届いていません。有効期限切れやCookieの保存・送信設定が原因として考えられます。このサイトのCookieを許可し、ChatGPTのアプリ設定から接続を開始し直してください。",
+    CSRF_TOKEN_MISMATCH: "認証ページとブラウザの確認情報が一致しません。ChatGPTのアプリ設定から接続を開始し直してください。",
+  };
+  const requestId = crypto.randomUUID();
+  const headers = { ...NO_STORE, "X-Request-ID": requestId, "X-Content-Type-Options": "nosniff" };
+  // Return only fixed diagnostic codes: never echo cookies, form values or URLs.
+  if (!request.headers.get("Accept")?.includes("text/html")) {
+    return Response.json({ error: "Invalid CSRF token", code, message: messages[code], request_id: requestId }, { status: 400, headers });
+  }
+  return new Response(`<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>接続を完了できませんでした</title></head>
+<body><h1>接続を完了できませんでした</h1><p>${messages[code]}</p>
+<p>この画面の再読み込みでは再接続できません。</p><p><a href="https://chatgpt.com/#settings/Plugins">ChatGPTの設定へ戻る</a></p>
+<p>問題が続く場合は、以下のコードをお知らせください。Cookieの内容を共有する必要はありません。</p>
+<p>確認コード: <code>${code}</code></p><p>問い合わせID: <code>${requestId}</code></p></body></html>`, {
+    status: 400,
+    headers: { ...headers, "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": "default-src 'none'; base-uri 'none'; frame-ancestors 'none'", "Referrer-Policy": "no-referrer" },
+  });
 }
 
 function cookieValue(request: Request, name: string): string | null {
@@ -97,6 +120,7 @@ async function authorizeGet(request: Request, env: OAuthEnv): Promise<Response> 
 
   return new Response(html, {
     headers: {
+      ...NO_STORE,
       "Content-Type": "text/html; charset=utf-8",
       "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self' https://github.com/login/oauth/authorize; base-uri 'none'; frame-ancestors 'none'",
       "Referrer-Policy": "no-referrer",
@@ -107,16 +131,21 @@ async function authorizeGet(request: Request, env: OAuthEnv): Promise<Response> 
 }
 
 async function authorizePost(request: Request, env: OAuthEnv): Promise<Response> {
-  const form = await request.formData();
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return csrfError(request, "CSRF_FORM_MISSING");
+  }
   const csrfForm = form.get("csrf_token");
   const encoded = form.get("state");
+  if (typeof csrfForm !== "string" || !csrfForm) return csrfError(request, "CSRF_FORM_MISSING");
   const csrfCookie =
     typeof csrfForm === "string"
       ? cookieValue(request, flowCookieName(CSRF_COOKIE_PREFIX, csrfForm))
       : null;
-  if (typeof csrfForm !== "string" || !csrfCookie || csrfForm !== csrfCookie) {
-    return jsonError("Invalid CSRF token");
-  }
+  if (!csrfCookie) return csrfError(request, "CSRF_COOKIE_MISSING");
+  if (csrfForm !== csrfCookie) return csrfError(request, "CSRF_TOKEN_MISMATCH");
   if (typeof encoded !== "string") return jsonError("Missing OAuth state");
 
   let authRequest: AuthRequest;
@@ -139,7 +168,7 @@ async function authorizePost(request: Request, env: OAuthEnv): Promise<Response>
   github.searchParams.set("scope", "read:user");
   github.searchParams.set("state", state);
 
-  const headers = new Headers({ Location: github.href });
+  const headers = new Headers({ ...NO_STORE, Location: github.href });
   headers.append(
     "Set-Cookie",
     secureCookie(flowCookieName(CSRF_COOKIE_PREFIX, csrfForm), "", 0),
@@ -218,6 +247,7 @@ async function callback(request: Request, env: OAuthEnv): Promise<Response> {
   return new Response(null, {
     status: 302,
     headers: {
+      ...NO_STORE,
       Location: redirectTo,
       "Set-Cookie": secureCookie(stateCookie, "", 0),
     },

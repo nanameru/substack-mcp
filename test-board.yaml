@@ -9,6 +9,17 @@ source_roots:
   - src
 
 cases:
+  - id: TC-005
+    title: "Remote MCP OAuth: CSRF失敗の原因を秘密情報なしで区別する"
+    feature: "Cloudflare Remote MCP OAuth"
+    scenario: "Cookie未送信・値不一致・フォーム欠落を拒否し、認証応答のキャッシュを禁止する"
+    status: done
+    priority: high
+    type: regression
+    source: [worker/oauth.ts]
+    test_file: "worker/oauth.test.ts"
+    issues: [10]
+    notes: "JSON/HTMLの両形式で固定コードを返し、フォーム・Cookie値の非開示とKV書き込みなしを検証。実ブラウザの接続成功は未確認。"
   - id: TC-001
     title: "Cloudflare Remote MCP本番デプロイ: OAuth保護されたMCPへ接続し読み取り専用で下書きを1件取得する"
     feature: "Cloudflare Remote MCP本番デプロイ"
