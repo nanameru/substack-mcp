@@ -9,6 +9,17 @@ source_roots:
   - src
 
 cases:
+  - id: TC-006
+    title: "Cookie接続診断: 認証に使わないCookieのGETとPOST到達を比較する"
+    feature: "Cloudflare Remote MCP OAuth"
+    scenario: "通常名と__Host-名の短命Cookieを比較し、秘密情報や認証権限なしで結果を返す"
+    status: done
+    priority: high
+    type: regression
+    source: [worker/oauth.ts, worker/cookie-diagnostics.ts]
+    test_file: "worker/cookie-diagnostics.test.ts"
+    issues: [10]
+    notes: "診断の3件の回帰テストと既存9件、型検査、Containerを保持するdry-runが成功。ローカルChromeでGET/POSTとも通常名・__Host-名の到達を確認。本番ブラウザ検証前。Cookie値やOAuth情報を返さず、KV/D1/Substackへアクセスしない。"
   - id: TC-005
     title: "Remote MCP OAuth: CSRF失敗の原因を秘密情報なしで区別する"
     feature: "Cloudflare Remote MCP OAuth"

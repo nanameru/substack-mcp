@@ -4,6 +4,7 @@ import type {
 } from "@cloudflare/workers-oauth-provider";
 
 import type { Env } from "./types";
+import { cookieDiagnostics } from "./cookie-diagnostics.ts";
 
 type OAuthEnv = Env & { OAUTH_PROVIDER: OAuthHelpers };
 
@@ -257,6 +258,10 @@ async function callback(request: Request, env: OAuthEnv): Promise<Response> {
 export const authHandler: ExportedHandler<OAuthEnv> = {
   async fetch(request, env): Promise<Response> {
     const { pathname } = new URL(request.url);
+    if ((pathname === "/auth/diagnostics" && request.method === "GET") ||
+        (pathname === "/auth/diagnostics/check" && ["GET", "POST"].includes(request.method))) {
+      return cookieDiagnostics(request);
+    }
     if (pathname === "/authorize" && request.method === "GET") {
       return authorizeGet(request, env);
     }

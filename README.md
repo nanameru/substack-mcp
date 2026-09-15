@@ -120,6 +120,17 @@ publication metadata in D1. It never stores the Substack session token. Exact
 duplicate bodies are blocked, including prior attempts whose upstream result
 could not be confirmed.
 
+### Cookie delivery diagnostics
+
+If OAuth reports `CSRF_COOKIE_MISSING`, open `/auth/diagnostics` on the
+deployed Worker. The page sets two non-authenticating, two-minute test cookies
+(ordinary and `__Host-` names), both Secure, HttpOnly, and SameSite=Lax.
+Compare the GET link and POST form, restarting the diagnostic between checks.
+Results show delivery booleans only; they never expose cookie values or OAuth
+credentials and never access Substack, KV, or D1. A successful diagnostic is
+not proof that OAuth works. Do not change cookie protections based on this
+test alone. This route must be deployed before use.
+
 ### Connect to ChatGPT Work with Secure MCP Tunnel
 
 This server uses the local `substack.sid` browser session and should not be
