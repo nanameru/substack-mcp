@@ -28,6 +28,8 @@ your Substack publication.
 - `list_drafts(limit?)` — List recent drafts.
 - `get_draft(post_id)` — Get a draft's full body.
 - `delete_draft(post_id)` — Permanent deletion.
+- `list_note_history(limit?)` — Read recent Note bodies and publication states to avoid repetition.
+- `post_note(text?, content?)` — Publish one Note after reserving its normalized body against exact duplicates.
 
 ## Setup
 
@@ -67,10 +69,17 @@ Install and create the OAuth state store:
 npm install
 npx wrangler login
 npx wrangler kv namespace create OAUTH_KV
+npx wrangler d1 create substack-mcp-note-history
 ```
 
-Put the returned namespace ID in `wrangler.jsonc` in place of
-`REPLACE_WITH_OAUTH_KV_ID`. Your final Worker URL will normally be:
+Put the returned KV namespace ID and D1 database ID in `wrangler.jsonc`. Apply
+the D1 migrations before the first deployment:
+
+```bash
+npx wrangler d1 migrations apply substack-mcp-note-history --remote
+```
+
+Your final Worker URL will normally be:
 
 ```text
 https://substack-mcp.<your-workers-subdomain>.workers.dev
@@ -106,7 +115,21 @@ https://substack-mcp.<your-workers-subdomain>.workers.dev/mcp
 Choose OAuth when prompted and sign in with an allowlisted GitHub account.
 Draft creation is non-public. Publishing, subscriber email, draft deletion, and
 Notes remain confirmation-gated by the tool descriptions and the bundled
-`substack-article` skill.
+`substack-article` skill. `post_note` stores only the public Note body and safe
+publication metadata in D1. It never stores the Substack session token. Exact
+duplicate bodies are blocked, including prior attempts whose upstream result
+could not be confirmed.
+
+### Cookie delivery diagnostics
+
+If OAuth reports `CSRF_COOKIE_MISSING`, open `/auth/diagnostics` on the
+deployed Worker. The page sets two non-authenticating, two-minute test cookies
+(ordinary and `__Host-` names), both Secure, HttpOnly, and SameSite=Lax.
+Compare the GET link and POST form, restarting the diagnostic between checks.
+Results show delivery booleans only; they never expose cookie values or OAuth
+credentials and never access Substack, KV, or D1. A successful diagnostic is
+not proof that OAuth works. Do not change cookie protections based on this
+test alone. This route must be deployed before use.
 
 ### Connect to ChatGPT Work with Secure MCP Tunnel
 

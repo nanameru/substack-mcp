@@ -34,5 +34,13 @@
       "binding": "OAUTH_KV",
       "id": "2804e83ca60f4b6487b038442fed4779"
     }
+  ],
+  "d1_databases": [
+    {
+      "binding": "NOTE_HISTORY_DB",
+      "database_name": "substack-mcp-note-history",
+      "database_id": "91052368-490c-430c-aec1-0cee49da0b74",
+      "migrations_dir": "migrations"
+    }
   ]
 }

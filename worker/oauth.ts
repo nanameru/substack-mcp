@@ -4,14 +4,38 @@ import type {
 } from "@cloudflare/workers-oauth-provider";
 
 import type { Env } from "./types";
+import { cookieDiagnostics } from "./cookie-diagnostics.ts";
 
 type OAuthEnv = Env & { OAUTH_PROVIDER: OAuthHelpers };
 
-const CSRF_COOKIE = "__Host-SUBSTACK_MCP_CSRF";
-const STATE_COOKIE = "__Host-SUBSTACK_MCP_STATE";
+const CSRF_COOKIE_PREFIX = "__Host-SUBSTACK_MCP_CSRF_";
+const STATE_COOKIE_PREFIX = "__Host-SUBSTACK_MCP_STATE_";
+const NO_STORE = { "Cache-Control": "no-store, max-age=0", Pragma: "no-cache" };
 
 function jsonError(message: string, status = 400): Response {
-  return Response.json({ error: message }, { status });
+  return Response.json({ error: message }, { status, headers: NO_STORE });
+}
+
+function csrfError(request: Request, code: "CSRF_FORM_MISSING" | "CSRF_COOKIE_MISSING" | "CSRF_TOKEN_MISMATCH"): Response {
+  const messages = {
+    CSRF_FORM_MISSING: "認証フォームの確認情報を受け取れませんでした。ChatGPTのアプリ設定から接続を開始し直してください。",
+    CSRF_COOKIE_MISSING: "この認証ページの確認用Cookieがブラウザから届いていません。有効期限切れやCookieの保存・送信設定が原因として考えられます。このサイトのCookieを許可し、ChatGPTのアプリ設定から接続を開始し直してください。",
+    CSRF_TOKEN_MISMATCH: "認証ページとブラウザの確認情報が一致しません。ChatGPTのアプリ設定から接続を開始し直してください。",
+  };
+  const requestId = crypto.randomUUID();
+  const headers = { ...NO_STORE, "X-Request-ID": requestId, "X-Content-Type-Options": "nosniff" };
+  // Return only fixed diagnostic codes: never echo cookies, form values or URLs.
+  if (!request.headers.get("Accept")?.includes("text/html")) {
+    return Response.json({ error: "Invalid CSRF token", code, message: messages[code], request_id: requestId }, { status: 400, headers });
+  }
+  return new Response(`<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>接続を完了できませんでした</title></head>
+<body><h1>接続を完了できませんでした</h1><p>${messages[code]}</p>
+<p>この画面の再読み込みでは再接続できません。</p><p><a href="https://chatgpt.com/#settings/Plugins">ChatGPTの設定へ戻る</a></p>
+<p>問題が続く場合は、以下のコードをお知らせください。Cookieの内容を共有する必要はありません。</p>
+<p>確認コード: <code>${code}</code></p><p>問い合わせID: <code>${requestId}</code></p></body></html>`, {
+    status: 400,
+    headers: { ...headers, "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": "default-src 'none'; base-uri 'none'; frame-ancestors 'none'", "Referrer-Policy": "no-referrer" },
+  });
 }
 
 function cookieValue(request: Request, name: string): string | null {
@@ -25,6 +49,11 @@ function cookieValue(request: Request, name: string): string | null {
 
 function secureCookie(name: string, value: string, maxAge: number): string {
   return `${name}=${value}; HttpOnly; Secure; Path=/; SameSite=Lax; Max-Age=${maxAge}`;
+}
+
+function flowCookieName(prefix: string, token: string): string {
+  const suffix = token.replace(/[^a-z0-9]/gi, "").slice(0, 64);
+  return `${prefix}${suffix || "invalid"}`;
 }
 
 async function sha256(value: string): Promise<string> {
@@ -72,7 +101,19 @@ async function authorizeGet(request: Request, env: OAuthEnv): Promise<Response> 
   const client = await env.OAUTH_PROVIDER.lookupClient(authRequest.clientId);
   if (!client) return jsonError("Unknown OAuth client");
 
+  // parseAuthRequest validates the callback against the client's registered URIs.
+  // Chrome applies form-action to the entire redirect chain, including the final
+  // return to ChatGPT. Use only a parsed origin: paths/queries are not CSP syntax.
+  let callbackSource = "";
+  try {
+    const callbackUrl = new URL(authRequest.redirectUri);
+    if (["https:", "http:"].includes(callbackUrl.protocol)) callbackSource = ` ${callbackUrl.origin}`;
+  } catch {
+    return jsonError("Invalid OAuth redirect URI");
+  }
+
   const csrf = crypto.randomUUID();
+  const csrfCookie = flowCookieName(CSRF_COOKIE_PREFIX, csrf);
   const clientName = escapeHtml(client.clientName || "ChatGPT");
   const state = escapeHtml(encodeState(authRequest));
 
@@ -91,23 +132,32 @@ async function authorizeGet(request: Request, env: OAuthEnv): Promise<Response> 
 
   return new Response(html, {
     headers: {
+      ...NO_STORE,
       "Content-Type": "text/html; charset=utf-8",
-      "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self' https://github.com/login/oauth/authorize; base-uri 'none'; frame-ancestors 'none'",
+      "Content-Security-Policy": `default-src 'none'; style-src 'unsafe-inline'; form-action 'self' https://github.com/login/oauth/authorize${callbackSource}; base-uri 'none'; frame-ancestors 'none'`,
       "Referrer-Policy": "no-referrer",
       "X-Frame-Options": "DENY",
-      "Set-Cookie": secureCookie(CSRF_COOKIE, csrf, 600),
+      "Set-Cookie": secureCookie(csrfCookie, csrf, 600),
     },
   });
 }
 
 async function authorizePost(request: Request, env: OAuthEnv): Promise<Response> {
-  const form = await request.formData();
-  const csrfForm = form.get("csrf_token");
-  const csrfCookie = cookieValue(request, CSRF_COOKIE);
-  const encoded = form.get("state");
-  if (typeof csrfForm !== "string" || !csrfCookie || csrfForm !== csrfCookie) {
-    return jsonError("Invalid CSRF token");
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return csrfError(request, "CSRF_FORM_MISSING");
   }
+  const csrfForm = form.get("csrf_token");
+  const encoded = form.get("state");
+  if (typeof csrfForm !== "string" || !csrfForm) return csrfError(request, "CSRF_FORM_MISSING");
+  const csrfCookie =
+    typeof csrfForm === "string"
+      ? cookieValue(request, flowCookieName(CSRF_COOKIE_PREFIX, csrfForm))
+      : null;
+  if (!csrfCookie) return csrfError(request, "CSRF_COOKIE_MISSING");
+  if (csrfForm !== csrfCookie) return csrfError(request, "CSRF_TOKEN_MISMATCH");
   if (typeof encoded !== "string") return jsonError("Missing OAuth state");
 
   let authRequest: AuthRequest;
@@ -122,6 +172,7 @@ async function authorizePost(request: Request, env: OAuthEnv): Promise<Response>
     expirationTtl: 600,
   });
   const stateHash = await sha256(state);
+  const stateCookie = flowCookieName(STATE_COOKIE_PREFIX, state);
   const callback = new URL("/callback", request.url).href;
   const github = new URL("https://github.com/login/oauth/authorize");
   github.searchParams.set("client_id", env.GITHUB_CLIENT_ID);
@@ -129,9 +180,12 @@ async function authorizePost(request: Request, env: OAuthEnv): Promise<Response>
   github.searchParams.set("scope", "read:user");
   github.searchParams.set("state", state);
 
-  const headers = new Headers({ Location: github.href });
-  headers.append("Set-Cookie", secureCookie(CSRF_COOKIE, "", 0));
-  headers.append("Set-Cookie", secureCookie(STATE_COOKIE, stateHash, 600));
+  const headers = new Headers({ ...NO_STORE, Location: github.href });
+  headers.append(
+    "Set-Cookie",
+    secureCookie(flowCookieName(CSRF_COOKIE_PREFIX, csrfForm), "", 0),
+  );
+  headers.append("Set-Cookie", secureCookie(stateCookie, stateHash, 600));
   return new Response(null, { status: 302, headers });
 }
 
@@ -141,7 +195,8 @@ async function callback(request: Request, env: OAuthEnv): Promise<Response> {
   const state = url.searchParams.get("state");
   if (!code || !state) return jsonError("Missing GitHub OAuth response");
 
-  const expectedHash = cookieValue(request, STATE_COOKIE);
+  const stateCookie = flowCookieName(STATE_COOKIE_PREFIX, state);
+  const expectedHash = cookieValue(request, stateCookie);
   if (!expectedHash || (await sha256(state)) !== expectedHash) {
     return jsonError("OAuth state does not match this browser session");
   }
@@ -204,8 +259,9 @@ async function callback(request: Request, env: OAuthEnv): Promise<Response> {
   return new Response(null, {
     status: 302,
     headers: {
+      ...NO_STORE,
       Location: redirectTo,
-      "Set-Cookie": secureCookie(STATE_COOKIE, "", 0),
+      "Set-Cookie": secureCookie(stateCookie, "", 0),
     },
   });
 }
@@ -213,6 +269,10 @@ async function callback(request: Request, env: OAuthEnv): Promise<Response> {
 export const authHandler: ExportedHandler<OAuthEnv> = {
   async fetch(request, env): Promise<Response> {
     const { pathname } = new URL(request.url);
+    if ((pathname === "/auth/diagnostics" && request.method === "GET") ||
+        (pathname === "/auth/diagnostics/check" && ["GET", "POST"].includes(request.method))) {
+      return cookieDiagnostics(request);
+    }
     if (pathname === "/authorize" && request.method === "GET") {
       return authorizeGet(request, env);
     }

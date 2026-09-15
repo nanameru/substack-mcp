@@ -9,6 +9,50 @@ source_roots:
   - src
 
 cases:
+  - id: TC-008
+    title: "定期投稿: 履歴確認と重複防止を含むタスクを2時間間隔で有効化する"
+    feature: "GPT Work定期投稿"
+    scenario: "既存の停止中タスクへ指示を保存し、Hourly/2 hoursと次回予定を実画面で確認する"
+    status: done
+    priority: high
+    type: manual
+    source: [docs/gpt-work-note-schedule-prompt.md]
+    test_file: ""
+    issues: [10]
+    notes: "2026-09-16にタスク6aa52bda89cc8191a086a8f67612d976の保存とResumeを実行。Hourlyと2 hoursの選択、更新後の名前、PauseボタンとNext run in 2 hoursを確認。同日、日本語のオリジナル構成と実装・デバッグ・テスト・設計中心の追加指示を保存し、編集フォームを開き直して保存値とEvery 2 hoursを確認。定期実行による初回公開成功はまだ未確認。"
+  - id: TC-007
+    title: "OAuth接続: フォーム送信後に登録済みChatGPTの戻り先へ遷移できる"
+    feature: "Cloudflare Remote MCP OAuth"
+    scenario: "検証済みredirectUriのoriginをCSPへ許可し、パスやクエリのCSP注入を防ぐ"
+    status: done
+    priority: high
+    type: regression
+    source: [worker/oauth.ts]
+    test_file: "worker/oauth.test.ts"
+    issues: [10]
+    notes: "変更前の許可不足を回帰テストで確認し、14件のNodeテスト・型検査・dry-run成功。2026-09-16に本番6da579c2へ反映後、ChromeでChatGPTの接続完了表示と12個のActionsを確認。token交換200、認証済みMCP200。下書き・履歴の実取得はこの検証では未実施。"
+  - id: TC-006
+    title: "Cookie接続診断: 認証に使わないCookieのGETとPOST到達を比較する"
+    feature: "Cloudflare Remote MCP OAuth"
+    scenario: "通常名と__Host-名の短命Cookieを比較し、秘密情報や認証権限なしで結果を返す"
+    status: done
+    priority: high
+    type: regression
+    source: [worker/oauth.ts, worker/cookie-diagnostics.ts]
+    test_file: "worker/cookie-diagnostics.test.ts"
+    issues: [10]
+    notes: "診断の3件の回帰テストと既存9件、型検査、Containerを保持するdry-runが成功。ローカルおよび本番ChromeでGET/POSTとも通常名・__Host-名の到達を確認。Cookie値やOAuth情報を返さず、KV/D1/Substackへアクセスしない。"
+  - id: TC-005
+    title: "Remote MCP OAuth: CSRF失敗の原因を秘密情報なしで区別する"
+    feature: "Cloudflare Remote MCP OAuth"
+    scenario: "Cookie未送信・値不一致・フォーム欠落を拒否し、認証応答のキャッシュを禁止する"
+    status: done
+    priority: high
+    type: regression
+    source: [worker/oauth.ts]
+    test_file: "worker/oauth.test.ts"
+    issues: [10]
+    notes: "JSON/HTMLの両形式で固定コードを返し、フォーム・Cookie値の非開示とKV書き込みなしを検証。実ブラウザの接続成功は未確認。"
   - id: TC-001
     title: "Cloudflare Remote MCP本番デプロイ: OAuth保護されたMCPへ接続し読み取り専用で下書きを1件取得する"
     feature: "Cloudflare Remote MCP本番デプロイ"
@@ -31,3 +75,25 @@ cases:
     test_file: "tests/test_note_posting.py"
     issues: [8]
     notes: "2026-09-12の1回限定ライブテストでHTTP応答外のRuntimeErrorが残存。送信・応答解析phaseの安全な診断を追加。追加診断版ではChatGPT側のtext欠落を確認したため、text/contentを受けてtextへ正規化する互換スキーマを追加。修正版の承認済み1回限定テストでNote 335417972の公開と本文反映を公開feedから確認し、重複なし。7件の実送信なし回帰テスト、Python構文、TypeScript型検査、Container dry-runにも成功。"
+  - id: TC-003
+    title: "Substack Notes履歴: D1へ投稿を予約し同一本文の二重投稿を防ぐ"
+    feature: "Substack Notes投稿履歴"
+    scenario: "正規化本文を一意に予約し成功・結果不明を保存する"
+    status: done
+    priority: high
+    type: regression
+    source: [worker/index.ts, worker/note-history.ts, migrations/0001_create_note_publications.sql, wrangler.jsonc]
+    test_file: "worker/note-history.test.ts"
+    issues: [10]
+    notes: "正規化とSHA-256、同一本文の拒否、published/unknown状態、履歴の新しい順取得を4件のNodeテストで実送信なしに検証。ローカルD1 migration、TypeScript型検査、既存Python 7件、Container dry-runも成功。"
+  - id: TC-004
+    title: "Remote MCP OAuth: 並行して開始された認証フローのCSRF Cookieを分離する"
+    feature: "Cloudflare Remote MCP OAuth"
+    scenario: "同じブラウザで複数の認証画面が生成されても各フォームをGitHub認証へ進められる"
+    status: passed
+    priority: high
+    type: regression
+    source: [worker/oauth.ts]
+    test_file: "worker/oauth.test.ts"
+    issues: [10]
+    notes: "固定名のCSRF Cookieが後続の認証GETで上書きされる回帰を再現。認証フロー固有のCookie名へ変更後、並行2フローがともにGitHub認証へ遷移することをNodeテストで確認。"
