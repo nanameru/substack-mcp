@@ -19,7 +19,7 @@ cases:
     source: [worker/oauth.ts]
     test_file: "worker/oauth.test.ts"
     issues: [10]
-    notes: "変更前の許可不足を回帰テストで確認し、14件のNodeテスト・型検査・dry-run成功。Chromeではフォーム後の最終redirectもform-action対象。本番接続の再検証前。"
+    notes: "変更前の許可不足を回帰テストで確認し、14件のNodeテスト・型検査・dry-run成功。2026-09-16に本番6da579c2へ反映後、ChromeでChatGPTの接続完了表示と12個のActionsを確認。token交換200、認証済みMCP200。下書き・履歴の実取得はこの検証では未実施。"
   - id: TC-006
     title: "Cookie接続診断: 認証に使わないCookieのGETとPOST到達を比較する"
     feature: "Cloudflare Remote MCP OAuth"
