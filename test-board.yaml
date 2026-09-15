@@ -9,6 +9,17 @@ source_roots:
   - src
 
 cases:
+  - id: TC-008
+    title: "定期投稿: 履歴確認と重複防止を含むタスクを2時間間隔で有効化する"
+    feature: "GPT Work定期投稿"
+    scenario: "既存の停止中タスクへ指示を保存し、Hourly/2 hoursと次回予定を実画面で確認する"
+    status: done
+    priority: high
+    type: manual
+    source: [docs/gpt-work-note-schedule-prompt.md]
+    test_file: ""
+    issues: [10]
+    notes: "2026-09-16にタスク6aa52bda89cc8191a086a8f67612d976の保存とResumeを実行。Hourlyと2 hoursの選択、更新後の名前、PauseボタンとNext run in 2 hoursを確認。定期実行による初回公開成功はまだ未確認。"
   - id: TC-007
     title: "OAuth接続: フォーム送信後に登録済みChatGPTの戻り先へ遷移できる"
     feature: "Cloudflare Remote MCP OAuth"
