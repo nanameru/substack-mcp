@@ -110,11 +110,40 @@ test("keeps concurrent authorization forms valid in the same browser", async () 
 test("authorization pages cannot be cached", async () => {
   const response = await authHandler.fetch!(new Request(`${BASE_URL}/authorize`), {
     OAUTH_PROVIDER: {
-      async parseAuthRequest() { return { clientId: "test" }; },
+      async parseAuthRequest() { return { clientId: "test", redirectUri: "https://chatgpt.com/connector/oauth/callback" }; },
       async lookupClient() { return { clientName: "ChatGPT" }; },
     },
   } as never, {} as ExecutionContext);
   assert.match(response.headers.get("Cache-Control") ?? "", /no-store/);
+});
+
+test("permits the validated OAuth callback origin in the form redirect chain", async () => {
+  const response = await authHandler.fetch!(new Request(`${BASE_URL}/authorize`), {
+    OAUTH_PROVIDER: {
+      async parseAuthRequest() {
+        return { clientId: "test", redirectUri: "https://chatgpt.com/connector/oauth/callback?private=hidden" };
+      },
+      async lookupClient() { return { clientName: "ChatGPT" }; },
+    },
+  } as never, {} as ExecutionContext);
+  const policy = response.headers.get("Content-Security-Policy") ?? "";
+  const formAction = policy.split(";").find((part) => part.trim().startsWith("form-action"));
+  assert.ok(formAction?.split(/\s+/).includes("https://chatgpt.com"));
+  assert.ok(!policy.includes("private"));
+  assert.match(policy, /default-src 'none'/);
+  assert.match(policy, /frame-ancestors 'none'/);
+});
+
+test("does not allow callback paths to inject CSP directives", async () => {
+  const response = await authHandler.fetch!(new Request(`${BASE_URL}/authorize`), {
+    OAUTH_PROVIDER: {
+      async parseAuthRequest() {
+        return { clientId: "test", redirectUri: "https://chatgpt.com/;script-src *" };
+      },
+      async lookupClient() { return { clientName: "ChatGPT" }; },
+    },
+  } as never, {} as ExecutionContext);
+  assert.ok(!(response.headers.get("Content-Security-Policy") ?? "").includes("script-src"));
 });
 
 for (const scenario of [

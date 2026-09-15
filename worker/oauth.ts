@@ -101,6 +101,17 @@ async function authorizeGet(request: Request, env: OAuthEnv): Promise<Response> 
   const client = await env.OAUTH_PROVIDER.lookupClient(authRequest.clientId);
   if (!client) return jsonError("Unknown OAuth client");
 
+  // parseAuthRequest validates the callback against the client's registered URIs.
+  // Chrome applies form-action to the entire redirect chain, including the final
+  // return to ChatGPT. Use only a parsed origin: paths/queries are not CSP syntax.
+  let callbackSource = "";
+  try {
+    const callbackUrl = new URL(authRequest.redirectUri);
+    if (["https:", "http:"].includes(callbackUrl.protocol)) callbackSource = ` ${callbackUrl.origin}`;
+  } catch {
+    return jsonError("Invalid OAuth redirect URI");
+  }
+
   const csrf = crypto.randomUUID();
   const csrfCookie = flowCookieName(CSRF_COOKIE_PREFIX, csrf);
   const clientName = escapeHtml(client.clientName || "ChatGPT");
@@ -123,7 +134,7 @@ async function authorizeGet(request: Request, env: OAuthEnv): Promise<Response> 
     headers: {
       ...NO_STORE,
       "Content-Type": "text/html; charset=utf-8",
-      "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self' https://github.com/login/oauth/authorize; base-uri 'none'; frame-ancestors 'none'",
+      "Content-Security-Policy": `default-src 'none'; style-src 'unsafe-inline'; form-action 'self' https://github.com/login/oauth/authorize${callbackSource}; base-uri 'none'; frame-ancestors 'none'`,
       "Referrer-Policy": "no-referrer",
       "X-Frame-Options": "DENY",
       "Set-Cookie": secureCookie(csrfCookie, csrf, 600),

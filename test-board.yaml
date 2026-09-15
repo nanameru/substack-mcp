@@ -9,6 +9,17 @@ source_roots:
   - src
 
 cases:
+  - id: TC-007
+    title: "OAuth接続: フォーム送信後に登録済みChatGPTの戻り先へ遷移できる"
+    feature: "Cloudflare Remote MCP OAuth"
+    scenario: "検証済みredirectUriのoriginをCSPへ許可し、パスやクエリのCSP注入を防ぐ"
+    status: done
+    priority: high
+    type: regression
+    source: [worker/oauth.ts]
+    test_file: "worker/oauth.test.ts"
+    issues: [10]
+    notes: "変更前の許可不足を回帰テストで確認し、14件のNodeテスト・型検査・dry-run成功。Chromeではフォーム後の最終redirectもform-action対象。本番接続の再検証前。"
   - id: TC-006
     title: "Cookie接続診断: 認証に使わないCookieのGETとPOST到達を比較する"
     feature: "Cloudflare Remote MCP OAuth"
@@ -19,7 +30,7 @@ cases:
     source: [worker/oauth.ts, worker/cookie-diagnostics.ts]
     test_file: "worker/cookie-diagnostics.test.ts"
     issues: [10]
-    notes: "診断の3件の回帰テストと既存9件、型検査、Containerを保持するdry-runが成功。ローカルChromeでGET/POSTとも通常名・__Host-名の到達を確認。本番ブラウザ検証前。Cookie値やOAuth情報を返さず、KV/D1/Substackへアクセスしない。"
+    notes: "診断の3件の回帰テストと既存9件、型検査、Containerを保持するdry-runが成功。ローカルおよび本番ChromeでGET/POSTとも通常名・__Host-名の到達を確認。Cookie値やOAuth情報を返さず、KV/D1/Substackへアクセスしない。"
   - id: TC-005
     title: "Remote MCP OAuth: CSRF失敗の原因を秘密情報なしで区別する"
     feature: "Cloudflare Remote MCP OAuth"
