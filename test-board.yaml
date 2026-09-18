@@ -1,0 +1,17 @@
+version: 1
+project:
+  name: substack-mcp
+  repo: nanameru/substack-mcp
+source_roots: [assets, skills]
+cases:
+  - id: TC-001
+    title: "固定フォローバナー: 4枚の画像と選択設定を検証する"
+    feature: "固定フォローバナー"
+    scenario: "4枚の画像と選択設定を検証する"
+    status: done
+    priority: medium
+    type: manual
+    source: [assets/follow-banners]
+    test_file: ""
+    issues: [12]
+    notes: "2026-09-18 手動検証済み。assets/follow-banners/README.md の検証手順に従いPNG5枚の寸法・SHA256・読み込み、候補4件、CDN4件のHTTP 200とJPEG読込を確認。新規記事の抽選例は03-cafe。週次指示を保存後に再取得し完全一致を確認。自動投稿の次回実行そのものは未実施。"

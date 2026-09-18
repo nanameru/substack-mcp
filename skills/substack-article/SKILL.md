@@ -15,6 +15,7 @@ Claude Code から作成・投稿するためのものです。画像生成は C
 
 ## 関連ドキュメント
 
+- 太陽本人のフォロー導線には `../../assets/follow-banners/README.md` と `manifest.json` の固定画像を使う。記事ごとに読書・打ち合わせ・カフェ・旅行の4枚から1枚をランダム選択し、同じ記事の再試行では再選択しない。バナーを毎回生成し直さない。
 - `templates/best-practices.md` — Substack 運用フレームワーク・推奨設定・成長戦略の要点（執筆や設定判断時に参照）
 - `templates/thumbnail-prompt.md` — サムネ生成（Codex 経由）の Prompt テンプレ
 - `templates/notes-workflow.md` — Notes（短文）の投稿パターン・運用ルール
