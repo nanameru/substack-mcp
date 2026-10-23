@@ -12,10 +12,9 @@ from substack import Api as SubstackApi
 from substack.post import Post
 
 from .auth import Credentials, load_credentials, write_cookie_file
+from .constants import VALID_AUDIENCES
 
 logger = logging.getLogger(__name__)
-
-VALID_AUDIENCES = {"everyone", "only_paid", "founding", "only_free"}
 
 ALLOWED_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".heic", ".heif"}
 

@@ -29,6 +29,32 @@ your Substack publication.
 - `get_draft(post_id)` — Get a draft's full body.
 - `delete_draft(post_id)` — Permanent deletion.
 
+## Create an article with a cover image
+
+For local publishing workflows, the package includes a CLI that creates the
+draft, uploads a cover image, sets it as the Substack thumbnail, and only
+publishes when `--publish` is explicitly supplied.
+
+```bash
+substack-publish-article article.md \
+  --title "Fable 5は何を変えるのか" \
+  --subtitle "発売日、対応プラットフォーム、Albionの進化を整理する" \
+  --cover-image thumbnails/fable_cover.png
+```
+
+Add `--publish` to publish immediately. Add `--send-email` only when you also
+want to email subscribers:
+
+```bash
+substack-publish-article article.md \
+  --title "Fable 5は何を変えるのか" \
+  --cover-image thumbnails/fable_cover.png \
+  --publish
+```
+
+`--send-email` and `--share-automatically` are rejected unless `--publish` is
+present, so a normal run is safe for draft creation and review.
+
 ## Setup
 
 ```bash
@@ -177,23 +203,16 @@ See `skills/substack-article/SKILL.md` for the full flow and guardrails.
 
 ### How auth works
 
-By default `substack-mcp-setup` reads the `substack.sid` cookie directly from
-your existing Chrome session via [pycookiecheat](https://pypi.org/project/pycookiecheat/).
-Substack can't tell anything was automated because **nothing was**: it's the
-same session you're already using.
-
-macOS will prompt once for Keychain access ("Chrome Safe Storage"). Click
-"Always Allow" so it doesn't ask again next time.
-
-Supports: Chrome, Brave, Edge, Chromium, Vivaldi, Opera.
+By default `substack-mcp-setup` opens a separate Playwright browser profile
+for you to log in. It does not read an existing browser profile or its
+Keychain entries. Existing-browser cookie import was removed because its
+dependency required an obsolete cryptography release. The legacy `--chrome`
+and `--from-browser` options exit with an explanation before reading credentials.
 
 ### Fallback modes
 
 ```bash
-# Specific browser
-substack-mcp-setup --from-browser brave
-
-# Playwright-based (often blocked by Substack — use --chrome instead)
+# Separate browser login (some services may block automated browsers)
 substack-mcp-setup --browser
 
 # Manual paste from DevTools
