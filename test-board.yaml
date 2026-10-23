@@ -18,5 +18,16 @@ cases:
     type: e2e
     source: [worker/index.ts, worker/oauth.ts, src/substack_mcp/cloud_api.py, wrangler.jsonc]
     test_file: ""
-    issues: [6]
-    notes: "2026-09-12にChatGPTからOAuth接続し、11ツールの認識とlist_drafts(limit=1)の成功を確認。記事本文は表示せず、書き込み系ツールは未実行。"
+    issues: [6, 8]
+    notes: "2026-09-12にChatGPTからOAuth接続し、11ツールの認識とlist_drafts(limit=1)の成功を確認。Issue #8の再デプロイ後にもGPT Workから再確認。記事本文は表示せず、書き込み系ツールは未実行。"
+  - id: TC-002
+    title: "Substack Notes投稿: 上流HTTP失敗を秘密情報なしで診断し正しいpayloadを送る"
+    feature: "Substack Notes投稿"
+    scenario: "上流HTTP失敗を秘密情報なしで診断し正しいpayloadを送る"
+    status: done
+    priority: medium
+    type: regression
+    source: [worker/index.ts, src/substack_mcp/client.py, src/substack_mcp/cloud_api.py]
+    test_file: "tests/test_note_posting.py"
+    issues: [8]
+    notes: "2026-09-12の1回限定ライブテストでHTTP応答外のRuntimeErrorが残存。送信・応答解析phaseの安全な診断を追加。追加診断版ではChatGPT側のtext欠落を確認したため、text/contentを受けてtextへ正規化する互換スキーマを追加。修正版の承認済み1回限定テストでNote 335417972の公開と本文反映を公開feedから確認し、重複なし。7件の実送信なし回帰テスト、Python構文、TypeScript型検査、Container dry-runにも成功。"

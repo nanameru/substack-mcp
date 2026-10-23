@@ -201,11 +201,31 @@ function createServer() {
     "post_note",
     {
       title: "Publish Substack Note",
-      description: "Immediately publish a short Note to the public Substack feed. Call only after explicit user confirmation.",
-      inputSchema: { text: z.string().min(1).max(4000) },
+      description:
+        "Immediately publish a short Note to the public Substack feed. Draft the complete Note first, then pass its full body in exactly one of the text or content arguments. Call only after explicit user confirmation.",
+      inputSchema: {
+        text: z
+          .string()
+          .min(1)
+          .max(4000)
+          .optional()
+          .describe("Preferred argument: the complete plain-text body of the Note"),
+        content: z
+          .string()
+          .min(1)
+          .max(4000)
+          .optional()
+          .describe("Compatibility alias for the complete plain-text body of the Note"),
+      },
       annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
     },
-    async (args) => result(await invoke("post_note", args)),
+    async (args) => {
+      const text = args.text ?? args.content;
+      if (!text) {
+        throw new Error("post_note requires the complete Note body in text or content");
+      }
+      return result(await invoke("post_note", { text }));
+    },
   );
 
   return server;

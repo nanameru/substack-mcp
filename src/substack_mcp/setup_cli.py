@@ -83,7 +83,7 @@ def _show_existing() -> None:
         return
     print(f"Existing credentials found at: {CONFIG_FILE}")
     print(f"  Publication URL: {creds.publication_url}")
-    print(f"  Session token:   {creds.session_token[:8]}...{creds.session_token[-4:]}")
+    print("  Session token:   stored (hidden)")
 
 
 def _confirm_overwrite(force: bool) -> bool:
@@ -169,20 +169,20 @@ def main() -> None:
         prog="substack-mcp-setup",
         description=(
             "Save Substack credentials for the MCP server. "
-            "Default mode auto-detects your existing Chrome login."
+            "Default mode opens a separate browser profile for login; existing browser cookies are not read."
         ),
     )
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument(
         "--chrome",
         action="store_true",
-        help="(default) Read substack.sid from your existing Chrome session.",
+        help="Removed for security: existing browser cookie import is unavailable.",
     )
     mode.add_argument(
         "--browser",
         action="store_true",
         help="Launch Playwright Chromium and have you log in there. "
-        "(Often triggers Substack's bot detection — use --chrome instead.)",
+        "Use --manual if the service blocks this login.",
     )
     mode.add_argument(
         "--manual",
@@ -192,8 +192,7 @@ def main() -> None:
     parser.add_argument(
         "--from-browser",
         choices=["chrome", "brave", "chromium"],
-        help="(with --chrome) Specific browser to read cookies from. "
-        "Defaults to auto-detection across all supported browsers.",
+        help="Removed for security: existing browser cookie import is unavailable.",
     )
     parser.add_argument(
         "--yes",
@@ -202,6 +201,10 @@ def main() -> None:
         help="Skip the overwrite confirmation prompt.",
     )
     args = parser.parse_args()
+
+    if args.chrome or args.from_browser:
+        print("Existing browser cookie import is disabled. Use --browser or --manual.", file=sys.stderr)
+        sys.exit(2)
 
     print(BANNER.format(path=CONFIG_FILE))
     _show_existing()
@@ -214,8 +217,7 @@ def main() -> None:
         sys.exit(_manual_flow())
     if args.browser:
         sys.exit(_browser_flow())
-    # Default: --chrome
-    sys.exit(_chrome_flow(browser=args.from_browser))
+    sys.exit(_browser_flow())
 
 
 if __name__ == "__main__":
